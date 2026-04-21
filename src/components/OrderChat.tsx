@@ -75,16 +75,23 @@ export const OrderChat = ({ orderId, productName }: Props) => {
     if (!content) return;
     if (content.length > 1000) return toast.error("Mensagem muito longa");
     setSending(true);
-    const { error } = await supabase.from("order_messages").insert({
-      order_id: orderId,
-      sender_id: user.id,
-      is_admin: isAdmin,
-      content,
-    });
+    const { data, error } = await supabase
+      .from("order_messages")
+      .insert({
+        order_id: orderId,
+        sender_id: user.id,
+        is_admin: isAdmin,
+        content,
+      })
+      .select()
+      .single();
     setSending(false);
     if (error) {
-      toast.error("Erro ao enviar");
+      toast.error("Erro ao enviar: " + error.message);
       return;
+    }
+    if (data) {
+      setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data as Message]));
     }
     setText("");
   };

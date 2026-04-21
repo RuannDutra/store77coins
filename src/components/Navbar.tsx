@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Coins, LogOut, Package, ShoppingBag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { NotificationsBell } from "@/components/NotificationsBell";
 
 export const Navbar = () => {
   const { user, isAdmin, signOut } = useAuth();
@@ -27,6 +28,7 @@ export const Navbar = () => {
         <nav className="flex items-center gap-2">
           {user ? (
             <>
+              <NotificationsBell />
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/orders">
                   <ShoppingBag className="h-4 w-4" />
