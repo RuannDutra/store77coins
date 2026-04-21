@@ -30,27 +30,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [username, setUsername] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, sessionUser?: any) => {
     // Try with avatar_url; if column doesn't exist yet fall back gracefully
     const [{ data: roleData }, { data: profileData, error: profileError }] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
-      supabase.from("profiles").select("username, avatar_url").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select("username").eq("id", userId).maybeSingle(),
     ]);
     setIsAdmin(!!roleData);
+    setUsername((profileData as any)?.username ?? null);
 
-    if (profileError || !profileData) {
-      // avatar_url column may not exist yet — retry without it
-      const { data: fallback } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("id", userId)
-        .maybeSingle();
-      setUsername((fallback as any)?.username ?? null);
-      setAvatarUrl(null);
-    } else {
-      setUsername((profileData as any)?.username ?? null);
-      setAvatarUrl((profileData as any)?.avatar_url ?? null);
-    }
+    // avatar_url lives in auth user_metadata — no DB column required
+    const meta = sessionUser?.user_metadata ?? {};
+    setAvatarUrl(meta.avatar_url ?? null);
   };
 
   useEffect(() => {
@@ -59,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(sess?.user ?? null);
       if (sess?.user) {
         // defer to avoid deadlock
-        setTimeout(() => fetchProfile(sess.user.id), 0);
+        setTimeout(() => fetchProfile(sess.user.id, sess.user), 0);
       } else {
         setIsAdmin(false);
         setUsername(null);
@@ -71,7 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        fetchProfile(sess.user.id);
+        fetchProfile(sess.user.id, sess.user);
       }
       setLoading(false);
     });

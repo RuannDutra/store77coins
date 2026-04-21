@@ -27,22 +27,16 @@ const Profile = () => {
     }
 
     const fetchProfile = async () => {
-      const { data, error } = await supabase
+      // Only fetch username/email — avatar lives in auth user_metadata
+      const { data } = await supabase
         .from("profiles")
-        .select("username, email, avatar_url")
+        .select("username, email")
         .eq("id", user.id)
         .maybeSingle();
-
-      if (error || !data) {
-        // avatar_url column may not exist yet — fallback without it
-        const { data: fallback } = await supabase
-          .from("profiles")
-          .select("username, email")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (fallback) setProfile({ ...(fallback as any), avatar_url: null });
-      } else {
-        setProfile(data as any);
+      if (data) {
+        // avatar_url comes from auth user_metadata, not the profiles table
+        const metaAvatar = user.user_metadata?.avatar_url ?? null;
+        setProfile({ ...(data as any), avatar_url: metaAvatar });
       }
       setLoading(false);
     };
@@ -73,10 +67,11 @@ const Profile = () => {
     const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
     // Cache-bust so the new image appears immediately
     const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ avatar_url: avatarUrl } as any)
-      .eq("id", user.id);
+
+    // Save to auth user_metadata — no SQL column needed
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { avatar_url: avatarUrl },
+    });
     if (updateError) {
       toast.error("Erro ao salvar: " + updateError.message);
       setUploadingAvatar(false);

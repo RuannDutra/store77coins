@@ -164,26 +164,21 @@ export const OrderChat = ({ orderId, productName }: Props) => {
           messages.map((m) => {
             const mine = m.sender_id === user?.id;
             const sender = senders[m.sender_id];
-            // If sender info not loaded yet, fall back to current user info for own messages
             const displayName = sender?.username ?? (mine ? (myUsername ?? "Você") : "...");
             const avatarUrl = sender?.avatar_url ?? (mine ? myAvatar : null);
 
             return (
-              <div key={m.id} className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
-                {/* Avatar on the LEFT for others */}
-                {!mine && (
-                  <AvatarBubble username={displayName} avatarUrl={avatarUrl} size={30} />
-                )}
+              <div key={m.id} className={cn("flex items-start gap-2", mine ? "flex-row-reverse" : "flex-row")}>
+                {/* Avatar — always top-aligned */}
+                <AvatarBubble username={displayName} avatarUrl={avatarUrl} size={28} />
 
-                <div
-                  className={cn(
-                    "max-w-[72%] rounded-2xl px-3 py-2 text-sm",
-                    mine
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted text-foreground rounded-bl-sm"
-                  )}
-                >
-                  <p className="text-[10px] font-semibold opacity-80 mb-0.5">
+                <div className={cn(
+                  "max-w-[70%] rounded-2xl px-3 py-2 text-sm",
+                  mine
+                    ? "bg-primary text-primary-foreground rounded-tr-sm"
+                    : "bg-muted text-foreground rounded-tl-sm"
+                )}>
+                  <p className="text-[10px] font-semibold opacity-75 mb-1 whitespace-nowrap">
                     {displayName}
                     {m.is_admin && (
                       <span className="ml-1 text-[9px] bg-yellow-500/20 text-yellow-400 px-1 py-0.5 rounded font-bold">Admin</span>
@@ -192,13 +187,8 @@ export const OrderChat = ({ orderId, productName }: Props) => {
                       · {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </p>
-                  <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                  <p className="whitespace-pre-wrap break-words leading-snug">{m.content}</p>
                 </div>
-
-                {/* Avatar on the RIGHT for own messages */}
-                {mine && (
-                  <AvatarBubble username={displayName} avatarUrl={avatarUrl} size={30} />
-                )}
               </div>
             );
           })
