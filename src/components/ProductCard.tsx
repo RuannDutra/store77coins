@@ -23,7 +23,7 @@ export const ProductCard = ({ id, name, price, image_url, delivery_type, categor
             src={image_url}
             alt={name}
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">

@@ -30,10 +30,13 @@ const Auth = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup">(params.get("mode") === "signup" ? "signup" : "login");
+  const [mode, setMode] = useState<"login" | "signup" | "verify">(params.get("mode") === "signup" ? "signup" : "login");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [touchedU, setTouchedU] = useState(false);
+  const [touchedE, setTouchedE] = useState(false);
   const [touchedP, setTouchedP] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -59,32 +62,45 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const email = fakeEmail(username);
+      if (mode === "verify") {
+        const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'signup' });
+        if (error) {
+          toast.error("Código inválido ou expirado.");
+          return;
+        }
+        toast.success("Conta verificada com sucesso! Bem-vindo.");
+        navigate("/");
+        return;
+      }
+
       if (mode === "signup") {
+        if (!email.includes("@")) return toast.error("Informe um e-mail válido.");
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
             data: { username },
           },
         });
         if (error) {
-          if (error.message.toLowerCase().includes("registered") || error.message.toLowerCase().includes("exists")) {
-            toast.error("Esse usuário já existe. Faça login.");
-          } else if (error.message.toLowerCase().includes("pwned") || error.message.toLowerCase().includes("compromised")) {
-            toast.error("Essa senha apareceu em vazamentos públicos. Escolha outra.");
-          } else {
-            toast.error(error.message);
-          }
+          toast.error(error.message);
           return;
         }
-        toast.success("Conta criada! Bem-vindo.");
-        navigate("/");
+        toast.success("Código enviado para o seu e-mail!");
+        setMode("verify");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        let loginEmail = username;
+        if (!username.includes("@")) {
+          const { data } = await supabase.from("profiles").select("email").eq("username", username).maybeSingle();
+          if (data?.email) {
+            loginEmail = data.email;
+          } else {
+            loginEmail = fakeEmail(username);
+          }
+        }
+        const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
         if (error) {
-          toast.error("Usuário ou senha inválidos");
+          toast.error("Usuário/e-mail ou senha inválidos");
           return;
         }
         toast.success("Bem-vindo de volta!");
@@ -110,70 +126,101 @@ const Auth = () => {
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-card-dark">
           <h1 className="font-display text-2xl font-bold mb-1">
-            {mode === "login" ? "Entrar" : "Criar conta"}
+            {mode === "login" ? "Entrar" : mode === "verify" ? "Verificar E-mail" : "Criar conta"}
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
-            {mode === "login" ? "Acesse sua conta para comprar" : "Cadastre-se em segundos"}
+            {mode === "login" ? "Acesse sua conta para comprar" : mode === "verify" ? "Digite o código enviado para o seu e-mail" : "Cadastre-se em segundos"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            <div className="space-y-2">
-              <Label htmlFor="username">Usuário</Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                onBlur={() => setTouchedU(true)}
-                placeholder="seu_usuario"
-                autoComplete="username"
-                className={cn(showUserError && "border-destructive focus-visible:ring-destructive")}
-                required
-              />
-              {mode === "signup" && (
-                <p className={cn("text-xs", showUserError ? "text-destructive" : "text-muted-foreground")}>
-                  {showUserError ? userError : "Sem espaços, sem começar com número ou pontuação."}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onBlur={() => setTouchedP(true)}
-                placeholder="••••••••"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                className={cn(showPwError && "border-destructive focus-visible:ring-destructive")}
-                required
-              />
-              {mode === "signup" && (
-                <ul className="text-xs space-y-1 pt-1">
-                  <li className={cn("flex items-center gap-1.5", pwChecks.length ? "text-success" : showPwError ? "text-destructive" : "text-muted-foreground")}>
-                    {pwChecks.length ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                    Mais de 8 caracteres
-                  </li>
-                  <li className={cn("flex items-center gap-1.5", pwChecks.special ? "text-success" : showPwError ? "text-destructive" : "text-muted-foreground")}>
-                    {pwChecks.special ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                    Pelo menos 1 caractere especial
-                  </li>
-                </ul>
-              )}
-            </div>
+            {mode === "verify" ? (
+              <div className="space-y-2">
+                <Label htmlFor="otp">Código de verificação</Label>
+                <Input
+                  id="otp"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="Ex: 123456"
+                  required
+                />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="username">{mode === "login" ? "Usuário ou E-mail" : "Usuário"}</Label>
+                  <Input
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    onBlur={() => setTouchedU(true)}
+                    placeholder={mode === "login" ? "seu_usuario ou email@exemplo.com" : "seu_usuario"}
+                    autoComplete="username"
+                    className={cn(showUserError && "border-destructive focus-visible:ring-destructive")}
+                    required
+                  />
+                  {mode === "signup" && (
+                    <p className={cn("text-xs", showUserError ? "text-destructive" : "text-muted-foreground")}>
+                      {showUserError ? userError : "Sem espaços, sem começar com número ou pontuação."}
+                    </p>
+                  )}
+                </div>
+                {mode === "signup" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={() => setTouchedE(true)}
+                      placeholder="seu@email.com"
+                      required
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onBlur={() => setTouchedP(true)}
+                    placeholder="••••••••"
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    className={cn(showPwError && "border-destructive focus-visible:ring-destructive")}
+                    required
+                  />
+                  {mode === "signup" && (
+                    <ul className="text-xs space-y-1 pt-1">
+                      <li className={cn("flex items-center gap-1.5", pwChecks.length ? "text-success" : showPwError ? "text-destructive" : "text-muted-foreground")}>
+                        {pwChecks.length ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                        Mais de 8 caracteres
+                      </li>
+                      <li className={cn("flex items-center gap-1.5", pwChecks.special ? "text-success" : showPwError ? "text-destructive" : "text-muted-foreground")}>
+                        {pwChecks.special ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                        Pelo menos 1 caractere especial
+                      </li>
+                    </ul>
+                  )}
+                </div>
+              </>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {mode === "login" ? "Entrar" : "Criar conta"}
+              {mode === "login" ? "Entrar" : mode === "verify" ? "Verificar" : "Criar conta"}
             </Button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => setMode(mode === "login" ? "signup" : "login")}
-            className="w-full mt-6 text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
-          </button>
+          {mode !== "verify" && (
+            <button
+              type="button"
+              onClick={() => setMode(mode === "login" ? "signup" : "login")}
+              className="w-full mt-6 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
+            </button>
+          )}
         </div>
       </div>
     </div>

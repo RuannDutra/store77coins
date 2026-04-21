@@ -21,6 +21,7 @@ interface Product {
   delivery_type: "automatic" | "manual";
   active: boolean;
   checkout_url: string | null;
+  variants?: { name: string; price: number; checkout_url: string }[] | null;
   categories?: { name: string } | null;
 }
 
@@ -33,6 +34,8 @@ const empty = {
   delivery_type: "manual" as "automatic" | "manual",
   active: true,
   checkout_url: "",
+  type: "normal" as "normal" | "dynamic",
+  variants: [] as { name: string; price: string; checkout_url: string }[],
 };
 
 export const AdminProducts = () => {
@@ -72,8 +75,24 @@ export const AdminProducts = () => {
       delivery_type: p.delivery_type,
       active: p.active,
       checkout_url: p.checkout_url || "",
+      type: p.variants && p.variants.length > 0 ? "dynamic" : "normal",
+      variants: p.variants ? p.variants.map((v: any) => ({ ...v, price: String(v.price) })) : [],
     });
     setOpen(true);
+  };
+
+  const addVariant = () => {
+    setForm(f => ({ ...f, variants: [...f.variants, { name: "", price: "", checkout_url: "" }] }));
+  };
+
+  const updateVariant = (index: number, field: string, value: string) => {
+    const newVariants = [...form.variants];
+    newVariants[index] = { ...newVariants[index], [field]: value };
+    setForm(f => ({ ...f, variants: newVariants }));
+  };
+
+  const removeVariant = (index: number) => {
+    setForm(f => ({ ...f, variants: f.variants.filter((_, i) => i !== index) }));
   };
 
   const handleUpload = async (file: File) => {
@@ -95,8 +114,15 @@ export const AdminProducts = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Nome obrigatório");
-    const price = parseFloat(form.price);
-    if (isNaN(price) || price < 0) return toast.error("Preço inválido");
+    
+    let price = 0;
+    if (form.type === "normal") {
+      price = parseFloat(form.price);
+      if (isNaN(price) || price < 0) return toast.error("Preço inválido");
+    } else {
+      if (form.variants.length === 0) return toast.error("Adicione pelo menos uma opção");
+      price = Math.min(...form.variants.map(v => parseFloat(v.price) || 0));
+    }
 
     setSaving(true);
     const payload = {
@@ -107,7 +133,8 @@ export const AdminProducts = () => {
       category_id: form.category_id || null,
       delivery_type: form.delivery_type,
       active: form.active,
-      checkout_url: form.checkout_url.trim() || null,
+      checkout_url: form.type === "normal" ? form.checkout_url.trim() || null : null,
+      variants: form.type === "dynamic" ? form.variants.map(v => ({ name: v.name.trim(), price: parseFloat(v.price), checkout_url: v.checkout_url.trim() })) : null,
     };
 
     const { error } = editing
@@ -150,11 +177,61 @@ export const AdminProducts = () => {
                 <Label>Descrição</Label>
                 <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Preço (R$)</Label>
-                  <Input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+              <div className="space-y-2">
+                <Label>Tipo de Anúncio</Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="type" checked={form.type === "normal"} onChange={() => setForm({ ...form, type: "normal" })} />
+                    Normal (Único preço e link)
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="type" checked={form.type === "dynamic"} onChange={() => setForm({ ...form, type: "dynamic" })} />
+                    Dinâmico (Múltiplas opções)
+                  </label>
                 </div>
+              </div>
+              {form.type === "normal" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Preço (R$)</Label>
+                    <Input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>URL do checkout (GOAT Pay)</Label>
+                    <Input
+                      type="url"
+                      placeholder="https://checkout.goatpay.com/..."
+                      value={form.checkout_url}
+                      onChange={(e) => setForm({ ...form, checkout_url: e.target.value })}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 border p-4 rounded-lg bg-muted/50">
+                  <div className="flex justify-between items-center">
+                    <Label>Opções do Produto</Label>
+                    <Button type="button" size="sm" variant="outline" onClick={addVariant}>
+                      <Plus className="h-4 w-4 mr-1" /> Add Opção
+                    </Button>
+                  </div>
+                  {form.variants.map((v, idx) => (
+                    <div key={idx} className="flex gap-2 items-start bg-card p-3 rounded border">
+                      <div className="flex-1 space-y-2">
+                        <Input placeholder="Nome da opção (ex: 1000 Coins)" value={v.name} onChange={(e) => updateVariant(idx, "name", e.target.value)} required />
+                        <div className="flex gap-2">
+                          <Input className="w-24" type="number" step="0.01" placeholder="Preço" value={v.price} onChange={(e) => updateVariant(idx, "price", e.target.value)} required />
+                          <Input className="flex-1" type="url" placeholder="Link de checkout" value={v.checkout_url} onChange={(e) => updateVariant(idx, "checkout_url", e.target.value)} required />
+                        </div>
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="text-destructive mt-1" onClick={() => removeVariant(idx)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {form.variants.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Nenhuma opção adicionada</p>}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Categoria</Label>
                   <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
@@ -164,26 +241,18 @@ export const AdminProducts = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Tipo de entrega</Label>
+                  <Select value={form.delivery_type} onValueChange={(v: any) => setForm({ ...form, delivery_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Manual</SelectItem>
+                      <SelectItem value="automatic">Automática</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Tipo de entrega</Label>
-                <Select value={form.delivery_type} onValueChange={(v: any) => setForm({ ...form, delivery_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">Manual</SelectItem>
-                    <SelectItem value="automatic">Automática</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>URL do checkout (GOAT Pay)</Label>
-                <Input
-                  type="url"
-                  placeholder="https://checkout.goatpay.com/..."
-                  value={form.checkout_url}
-                  onChange={(e) => setForm({ ...form, checkout_url: e.target.value })}
-                />
-              </div>
+
               <div className="space-y-2">
                 <Label>Imagem</Label>
                 <div className="flex items-center gap-3">

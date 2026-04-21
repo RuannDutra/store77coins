@@ -19,10 +19,7 @@ const Index = () => {
         <div className="absolute inset-0 bg-glow pointer-events-none" />
         <div className="container relative py-20 md:py-32">
           <div className="mx-auto max-w-3xl text-center animate-fade-in">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-xs font-medium text-primary mb-6">
-              <Zap className="h-3.5 w-3.5" />
-              MARKETPLACE OFICIAL
-            </div>
+
             <h1 className="font-display text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
               Seus coins,<br />
               <span className="text-gradient-yellow">entregues no estilo.</span>
@@ -49,7 +46,6 @@ const Index = () => {
 
       <footer className="border-t border-border py-8">
         <div className="container text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} 77 Coins · Todos os direitos reservados
         </div>
       </footer>
     </div>

@@ -17,6 +17,7 @@ interface Product {
   image_url: string | null;
   delivery_type: "automatic" | "manual";
   checkout_url: string | null;
+  variants?: { name: string; price: number; checkout_url: string }[] | null;
   categories: { name: string } | null;
 }
 
@@ -25,6 +26,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState(false);
 
@@ -32,11 +34,14 @@ const ProductDetail = () => {
     if (!id) return;
     supabase
       .from("products")
-      .select("id, name, description, price, image_url, delivery_type, checkout_url, categories(name)")
+      .select("id, name, description, price, image_url, delivery_type, checkout_url, variants, categories(name)")
       .eq("id", id)
       .maybeSingle()
       .then(({ data }) => {
         setProduct(data as any);
+        if (data && (data as any).variants && (data as any).variants.length > 0) {
+          setSelectedVariant(0);
+        }
         setLoading(false);
         if (data) document.title = `${data.name} — 77 Coins`;
       });
@@ -48,7 +53,13 @@ const ProductDetail = () => {
       return;
     }
     if (!product) return;
-    if (!product.checkout_url) {
+
+    const variant = product.variants && selectedVariant !== null ? product.variants[selectedVariant] : null;
+    const checkout_url = variant ? variant.checkout_url : product.checkout_url;
+    const amount = variant ? variant.price : product.price;
+    const product_name = variant ? `${product.name} - ${variant.name}` : product.name;
+
+    if (!checkout_url) {
       toast.error("Checkout indisponível para este produto");
       return;
     }
@@ -59,24 +70,24 @@ const ProductDetail = () => {
       .insert({
         user_id: user.id,
         product_id: product.id,
-        product_name: product.name,
-        amount: product.price,
-        checkout_url: product.checkout_url,
+        product_name,
+        amount,
+        checkout_url,
         status: "pending",
       })
-      .select()
+      .select("id")
       .single();
 
     setBuying(false);
 
     if (error) {
-      toast.error("Erro ao iniciar pedido");
+      toast.error("Erro ao criar pedido");
       return;
     }
 
     toast.success("Pedido criado! Redirecionando para o checkout...");
     setTimeout(() => {
-      window.open(product.checkout_url!, "_blank");
+      window.open(checkout_url, "_blank");
       navigate("/orders");
     }, 800);
   };
@@ -115,7 +126,7 @@ const ProductDetail = () => {
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-card">
             {product.image_url ? (
-              <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+              <img src={product.image_url} alt={product.name} className="h-full w-full object-contain bg-muted" />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
                 <span className="font-display text-6xl">77</span>
@@ -148,11 +159,31 @@ const ProductDetail = () => {
             )}
 
             <div className="mt-auto rounded-2xl border border-border bg-card p-6">
+              {product.variants && product.variants.length > 0 && (
+                <div className="mb-6 space-y-3">
+                  <p className="text-sm font-medium">Selecione uma opção:</p>
+                  <div className="grid gap-2">
+                    {product.variants.map((v, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedVariant(idx)}
+                        className={`flex justify-between items-center p-3 rounded-lg border text-left transition-colors ${
+                          selectedVariant === idx ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <span className="font-medium">{v.name}</span>
+                        <span className="text-primary font-bold">R$ {Number(v.price).toFixed(2).replace(".", ",")}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-end justify-between mb-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Preço</p>
                   <p className="font-display text-4xl font-bold text-primary">
-                    R$ {Number(product.price).toFixed(2).replace(".", ",")}
+                    R$ {Number(product.variants && selectedVariant !== null ? product.variants[selectedVariant].price : product.price).toFixed(2).replace(".", ",")}
                   </p>
                 </div>
               </div>

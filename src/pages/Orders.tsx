@@ -6,13 +6,17 @@ import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OrderChat } from "@/components/OrderChat";
-import { CheckCircle2, Clock, MessageSquare, ShoppingBag, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, MessageSquare, ShoppingBag, XCircle, Star, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 interface Order {
   id: string;
   product_name: string;
+  product_id: string;
   amount: number;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "delivered";
   checkout_url: string | null;
   admin_notes: string | null;
   created_at: string;
@@ -21,6 +25,7 @@ interface Order {
 const statusConfig = {
   pending: { label: "Em análise", icon: Clock, className: "border-warning text-warning" },
   approved: { label: "Aprovado", icon: CheckCircle2, className: "border-success text-success" },
+  delivered: { label: "Entregue", icon: CheckCircle2, className: "border-primary text-primary" },
   rejected: { label: "Recusado", icon: XCircle, className: "border-destructive text-destructive" },
 };
 
@@ -31,6 +36,32 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [openChat, setOpenChat] = useState<string | null>(null);
 
+  const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [savingReview, setSavingReview] = useState(false);
+
+  const handleSaveReview = async () => {
+    if (!reviewOrder || !user) return;
+    if (!comment.trim()) return toast.error("Escreva um comentário.");
+    setSavingReview(true);
+    const { error } = await supabase.from("reviews").insert({
+      product_id: reviewOrder.product_id, // Wait, I don't have product_id in the select query! Let me add it.
+      user_id: user.id,
+      rating,
+      comment: comment.trim(),
+    });
+    setSavingReview(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Avaliação enviada! Ela será analisada pela equipe.");
+      setReviewOrder(null);
+      setComment("");
+      setRating(5);
+    }
+  };
+
   useEffect(() => {
     document.title = "Meus pedidos — 77 Coins";
     if (!authLoading && !user) {
@@ -40,7 +71,7 @@ const Orders = () => {
     if (!user) return;
     supabase
       .from("orders")
-      .select("id, product_name, amount, status, checkout_url, admin_notes, created_at")
+      .select("id, product_name, product_id, amount, status, checkout_url, admin_notes, created_at")
       .order("created_at", { ascending: false })
       .then(({ data }) => {
         setOrders((data as any) || []);
@@ -93,10 +124,15 @@ const Orders = () => {
                           </a>
                         </Button>
                       )}
-                      {o.status === "approved" && (
-                        <Button size="sm" onClick={() => setOpenChat(chatOpen ? null : o.id)}>
+                      {(o.status === "approved" || o.status === "delivered") && (
+                        <Button size="sm" variant="outline" onClick={() => setOpenChat(chatOpen ? null : o.id)}>
                           <MessageSquare className="h-4 w-4" />
                           {chatOpen ? "Fechar chat" : "Abrir chat"}
+                        </Button>
+                      )}
+                      {o.status === "delivered" && (
+                        <Button size="sm" onClick={() => setReviewOrder(o)}>
+                          <Star className="h-4 w-4" /> Avaliar Produto
                         </Button>
                       )}
                     </div>
@@ -107,7 +143,7 @@ const Orders = () => {
                       {o.admin_notes}
                     </div>
                   )}
-                  {chatOpen && o.status === "approved" && (
+                  {chatOpen && (o.status === "approved" || o.status === "delivered") && (
                     <div className="mt-4">
                       <OrderChat orderId={o.id} productName={o.product_name} />
                     </div>
@@ -118,6 +154,34 @@ const Orders = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={!!reviewOrder} onOpenChange={(o) => !o && setReviewOrder(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Avaliar Produto</DialogTitle>
+            <DialogDescription>Deixe sua avaliação para {reviewOrder?.product_name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((r) => (
+                <button key={r} type="button" onClick={() => setRating(r)}>
+                  <Star className={`h-8 w-8 ${rating >= r ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+                </button>
+              ))}
+            </div>
+            <Textarea
+              placeholder="Escreva seu comentário sobre o produto..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={4}
+            />
+            <Button className="w-full" onClick={handleSaveReview} disabled={savingReview}>
+              {savingReview && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Enviar Avaliação
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -12,7 +12,7 @@ interface Order {
   id: string;
   product_name: string;
   amount: number;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "delivered";
   checkout_url: string | null;
   external_id: string | null;
   admin_notes: string | null;
@@ -23,9 +23,9 @@ interface Order {
 
 export const AdminOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [filter, setFilter] = useState<"pending" | "approved" | "rejected" | "delivered" | "all">("pending");
   const [acting, setActing] = useState<Order | null>(null);
-  const [action, setAction] = useState<"approved" | "rejected">("approved");
+  const [action, setAction] = useState<"approved" | "rejected" | "delivered">("approved");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [openChat, setOpenChat] = useState<string | null>(null);
@@ -48,7 +48,9 @@ export const AdminOrders = () => {
 
   useEffect(() => { load(); }, [filter]);
 
-  const openAction = (o: Order, a: "approved" | "rejected") => {
+  useEffect(() => { load(); }, [filter]);
+
+  const openAction = (o: Order, a: "approved" | "rejected" | "delivered") => {
     setActing(o);
     setAction(a);
     setNotes(o.admin_notes || "");
@@ -63,18 +65,29 @@ export const AdminOrders = () => {
       .eq("id", acting.id);
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success(`Pedido ${action === "approved" ? "aprovado" : "recusado"}`);
+    toast.success(`Pedido ${action === "approved" ? "aprovado" : action === "delivered" ? "entregue" : "recusado"}`);
     setActing(null);
     setNotes("");
     load();
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir este pedido?")) return;
+    const { error } = await supabase.from("orders").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir pedido: " + error.message);
+    } else {
+      toast.success("Pedido excluído com sucesso.");
+      load();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap">
-        {(["pending", "approved", "rejected", "all"] as const).map((f) => (
+        {(["pending", "approved", "delivered", "rejected", "all"] as const).map((f) => (
           <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" onClick={() => setFilter(f)}>
-            {f === "pending" ? "Em análise" : f === "approved" ? "Aprovados" : f === "rejected" ? "Recusados" : "Todos"}
+            {f === "pending" ? "Em análise" : f === "approved" ? "Aprovados" : f === "delivered" ? "Entregues" : f === "rejected" ? "Recusados" : "Todos"}
           </Button>
         ))}
       </div>
@@ -99,6 +112,7 @@ export const AdminOrders = () => {
                   <Badge variant="outline" className="gap-1">
                     {o.status === "pending" && <><Clock className="h-3 w-3" /> Em análise</>}
                     {o.status === "approved" && <><CheckCircle2 className="h-3 w-3 text-success" /> Aprovado</>}
+                    {o.status === "delivered" && <><CheckCircle2 className="h-3 w-3 text-primary" /> Entregue</>}
                     {o.status === "rejected" && <><XCircle className="h-3 w-3 text-destructive" /> Recusado</>}
                   </Badge>
                 </div>
@@ -112,6 +126,9 @@ export const AdminOrders = () => {
                   <Button size="sm" variant="destructive" onClick={() => openAction(o, "rejected")}>
                     <XCircle className="h-4 w-4" /> Recusar
                   </Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(o.id)}>
+                    Excluir
+                  </Button>
                   {o.checkout_url && (
                     <Button size="sm" variant="outline" asChild>
                       <a href={o.checkout_url} target="_blank" rel="noopener noreferrer">Checkout</a>
@@ -120,16 +137,36 @@ export const AdminOrders = () => {
                 </div>
               )}
               {o.status === "approved" && (
-                <div className="pt-2">
+                <div className="flex gap-2 pt-2 flex-wrap">
+                  <Button size="sm" onClick={() => openAction(o, "delivered")}>
+                    <CheckCircle2 className="h-4 w-4" /> Marcar como Entregue
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => setOpenChat(openChat === o.id ? null : o.id)}>
                     <MessageSquare className="h-4 w-4" />
                     {openChat === o.id ? "Fechar chat" : "Abrir chat com cliente"}
                   </Button>
-                  {openChat === o.id && (
-                    <div className="mt-3">
-                      <OrderChat orderId={o.id} productName={o.product_name} />
-                    </div>
-                  )}
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(o.id)}>
+                    Excluir
+                  </Button>
+                </div>
+              )}
+              {o.status === "delivered" && (
+                <div className="pt-2 flex gap-2">
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(o.id)}>
+                    Excluir
+                  </Button>
+                </div>
+              )}
+              {o.status === "rejected" && (
+                <div className="pt-2 flex gap-2">
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(o.id)}>
+                    Excluir
+                  </Button>
+                </div>
+              )}
+              {(o.status === "approved" || o.status === "delivered") && openChat === o.id && (
+                <div className="mt-3">
+                  <OrderChat orderId={o.id} productName={o.product_name} />
                 </div>
               )}
             </div>
@@ -140,7 +177,7 @@ export const AdminOrders = () => {
       <Dialog open={!!acting} onOpenChange={(o) => !o && setActing(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{action === "approved" ? "Aprovar pedido" : "Recusar pedido"}</DialogTitle>
+            <DialogTitle>{action === "approved" ? "Aprovar pedido" : action === "delivered" ? "Marcar como Entregue" : "Recusar pedido"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">{acting?.product_name}</p>
