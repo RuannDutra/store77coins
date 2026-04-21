@@ -121,11 +121,11 @@ const ProductDetail = () => {
         </Button>
 
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="overflow-hidden rounded-2xl border border-border">
             {product.image_url ? (
-              <img src={product.image_url} alt={product.name} className="h-full w-full object-contain bg-muted" />
+              <img src={product.image_url} alt={product.name} className="w-full h-auto block" />
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
+              <div className="flex aspect-square items-center justify-center text-muted-foreground bg-card">
                 <span className="font-display text-6xl">77</span>
               </div>
             )}
