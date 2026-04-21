@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Coins, Loader2, Check, X } from "lucide-react";
+import { Coins, Loader2, Check, X, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fakeEmail = (u: string) => `${u.toLowerCase()}@77coins.local`;
@@ -36,10 +36,14 @@ const Auth = () => {
   const [touchedU, setTouchedU] = useState(false);
   const [touchedP, setTouchedP] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (user) navigate("/");
   }, [user, navigate]);
+
+  // Reset password visibility when switching modes
+  useEffect(() => { setShowPassword(false); }, [mode]);
 
   const userError = useMemo(() => validateUsername(username), [username]);
   const pwChecks = useMemo(() => passwordChecks(password), [password]);
@@ -140,17 +144,28 @@ const Auth = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onBlur={() => setTouchedP(true)}
-                    placeholder="••••••••"
-                    autoComplete={mode === "login" ? "current-password" : "new-password"}
-                    className={cn(showPwError && "border-destructive focus-visible:ring-destructive")}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onBlur={() => setTouchedP(true)}
+                      placeholder="••••••••"
+                      autoComplete={mode === "login" ? "current-password" : "new-password"}
+                      className={cn("pr-10", showPwError && "border-destructive focus-visible:ring-destructive")}
+                      required
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   {mode === "signup" && (
                     <ul className="text-xs space-y-1 pt-1">
                       <li className={cn("flex items-center gap-1.5", pwChecks.length ? "text-success" : showPwError ? "text-destructive" : "text-muted-foreground")}>
