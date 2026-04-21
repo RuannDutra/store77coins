@@ -62,11 +62,10 @@ export const ProductReviews = ({ productId }: Props) => {
       const [{ data: orders }, { data: existing }] = await Promise.all([
         supabase
           .from("orders")
-          .select("id")
+          .select("id, status, admin_notes")
           .eq("user_id", user.id)
           .eq("product_id", productId)
-          .eq("status", "approved")
-          .limit(1),
+          .eq("status", "approved"),
         supabase
           .from("reviews")
           .select("id")
@@ -74,7 +73,11 @@ export const ProductReviews = ({ productId }: Props) => {
           .eq("product_id", productId)
           .maybeSingle(),
       ]);
-      setCanReview((orders || []).length > 0);
+      // Permite avaliar se tem um pedido marcado como entregue (com marcador)
+      const deliveredOrders = (orders || []).filter(
+        (o: any) => o.admin_notes && o.admin_notes.startsWith("[ENTREGUE]")
+      );
+      setCanReview(deliveredOrders.length > 0);
       setAlreadyReviewed(!!existing);
     };
     check();

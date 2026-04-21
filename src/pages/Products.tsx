@@ -21,25 +21,45 @@ interface Category {
   slug: string;
 }
 
+interface RatingMap {
+  [productId: string]: { avg: number; count: number };
+}
+
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ratings, setRatings] = useState<RatingMap>({});
 
   useEffect(() => {
     document.title = "Produtos — 77 Coins";
     const load = async () => {
-      const [{ data: prods }, { data: cats }] = await Promise.all([
+      const [{ data: prods }, { data: cats }, { data: revs }] = await Promise.all([
         supabase
           .from("products")
           .select("id, name, price, image_url, delivery_type, category_id, categories(id, name)")
           .eq("active", true)
           .order("created_at", { ascending: false }),
         supabase.from("categories").select("id, name, slug").order("name"),
+        supabase.from("reviews").select("product_id, rating").eq("approved", true),
       ]);
+
       setProducts((prods as any) || []);
       setCategories(cats || []);
+
+      // Calcula média por produto
+      const map: RatingMap = {};
+      (revs || []).forEach((r: any) => {
+        if (!map[r.product_id]) map[r.product_id] = { avg: 0, count: 0 };
+        map[r.product_id].count += 1;
+        map[r.product_id].avg += r.rating;
+      });
+      Object.keys(map).forEach((id) => {
+        map[id].avg = map[id].avg / map[id].count;
+      });
+      setRatings(map);
+
       setLoading(false);
     };
     load();
@@ -111,6 +131,8 @@ const Products = () => {
                   image_url={p.image_url}
                   delivery_type={p.delivery_type}
                   category={p.categories}
+                  avgRating={ratings[p.id]?.avg ?? null}
+                  reviewCount={ratings[p.id]?.count ?? 0}
                 />
               ))}
             </div>

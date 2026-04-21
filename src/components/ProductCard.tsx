@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Zap, Clock } from "lucide-react";
+import { Zap, Clock, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface ProductCardProps {
@@ -9,9 +9,20 @@ interface ProductCardProps {
   image_url: string | null;
   delivery_type: "automatic" | "manual";
   category?: { name: string } | null;
+  avgRating?: number | null;
+  reviewCount?: number;
 }
 
-export const ProductCard = ({ id, name, price, image_url, delivery_type, category }: ProductCardProps) => {
+export const ProductCard = ({
+  id,
+  name,
+  price,
+  image_url,
+  delivery_type,
+  category,
+  avgRating,
+  reviewCount = 0,
+}: ProductCardProps) => {
   return (
     <Link
       to={`/product/${id}`}
@@ -41,6 +52,26 @@ export const ProductCard = ({ id, name, price, image_url, delivery_type, categor
         <h3 className="font-display text-base font-semibold leading-tight line-clamp-2">
           {name}
         </h3>
+
+        {/* Estrelas — só aparece após a primeira avaliação */}
+        {avgRating != null && reviewCount > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="flex">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-3.5 w-3.5 ${
+                    i < Math.round(avgRating) ? "fill-primary text-primary" : "text-muted"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {avgRating.toFixed(1)} ({reviewCount})
+            </span>
+          </div>
+        )}
+
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div>
             <p className="text-xs text-muted-foreground">a partir de</p>
