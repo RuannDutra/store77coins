@@ -50,9 +50,12 @@ export const OrderChat = ({ orderId, productName }: Props) => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "order_messages", filter: `order_id=eq.${orderId}` },
         (payload) => {
+          const msg = payload.new as Message;
+          // Segurança: ignorar mensagens de outros pedidos mesmo que o filtro falhe
+          if (msg.order_id !== orderId) return;
           setMessages((prev) => {
-            if (prev.some((m) => m.id === (payload.new as any).id)) return prev;
-            return [...prev, payload.new as Message];
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
           });
         }
       )
@@ -75,12 +78,12 @@ export const OrderChat = ({ orderId, productName }: Props) => {
     if (!content) return;
     if (content.length > 1000) return toast.error("Mensagem muito longa");
     setSending(true);
+    // SEGURANÇA: is_admin NÃO é enviado pelo cliente — o banco define via trigger
     const { data, error } = await supabase
       .from("order_messages")
       .insert({
         order_id: orderId,
         sender_id: user.id,
-        is_admin: isAdmin,
         content,
       })
       .select()
