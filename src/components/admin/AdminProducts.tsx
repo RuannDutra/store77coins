@@ -152,11 +152,12 @@ export const AdminProducts = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir produto? Ele será apenas desativado para preservar o histórico de vendas.")) return;
-    const { error } = await supabase.from("products").update({ active: false }).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Produto desativado");
-    load();
+    if (!confirm("Excluir produto? Ele será desativado e removido da loja.")) return;
+    // Remove do painel imediatamente (otimista)
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    toast.success("Produto removido.");
+    // Desativa no banco em segundo plano
+    await supabase.from("products").update({ active: false }).eq("id", id);
   };
 
   return (
