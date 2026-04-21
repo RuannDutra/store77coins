@@ -57,18 +57,28 @@ const Profile = () => {
       return;
     }
     setUploadingAvatar(true);
+
+    // Ensure the bucket exists (creates it if missing)
+    await supabase.storage.createBucket("avatars", {
+      public: true,
+      fileSizeLimit: 2097152,
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+    });
+    // ↑ If bucket already exists Supabase returns an error we can safely ignore
+
     const ext = file.name.split(".").pop();
     const path = `${user.id}/avatar.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(path, file, { upsert: true });
+
     if (uploadError) {
       toast.error("Erro no upload: " + uploadError.message);
       setUploadingAvatar(false);
       return;
     }
     const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-    // Add cache-busting so the new image is immediately visible
+    // Cache-bust so the new image appears immediately
     const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
     const { error: updateError } = await supabase
       .from("profiles")

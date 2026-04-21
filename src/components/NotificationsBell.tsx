@@ -20,6 +20,27 @@ interface Notif {
 
 const STORAGE_KEY = (uid: string) => `77c_notif_seen_${uid}`;
 
+/** Short pleasant ping via Web Audio API — no external files needed */
+const playNotifSound = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);        // A5
+    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08); // E6
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.35);
+    osc.onended = () => ctx.close();
+  } catch {
+    // AudioContext not supported — silently skip
+  }
+};
+
 export const NotificationsBell = () => {
   const { user, isAdmin } = useAuth();
   const [notifs, setNotifs] = useState<Notif[]>([]);
@@ -106,6 +127,7 @@ export const NotificationsBell = () => {
           setNotifs((prev) => {
             const id = `msg-${m.id}`;
             if (prev.some((n) => n.id === id)) return prev;
+            playNotifSound();
             return [
               {
                 id,
@@ -132,6 +154,7 @@ export const NotificationsBell = () => {
           setNotifs((prev) => {
             const id = `order-${o.id}-${o.status}`;
             if (prev.some((n) => n.id === id)) return prev;
+            playNotifSound();
             return [
               {
                 id,
