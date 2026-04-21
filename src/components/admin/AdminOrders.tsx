@@ -37,7 +37,7 @@ export const AdminOrders = () => {
     const { data } = await q;
     const list = (data as any) || [];
     setOrders(list);
-    const uids: string[] = Array.from(new Set(list.map((o: Order) => o.user_id)));
+    const uids: string[] = Array.from(new Set(list.map((o: Order) => o.user_id as string)));
     if (uids.length) {
       const { data: profs } = await supabase.from("profiles").select("id, username").in("id", uids);
       const map: Record<string, string> = {};
