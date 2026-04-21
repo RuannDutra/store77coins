@@ -60,7 +60,7 @@ export const NotificationsBell = () => {
         // Only notify the buyer about their own status changes
         list.push({
           id: `order-${o.id}-${o.status}`,
-          type: (o.status === "approved" ? "order_approved" : "order_rejected") as const,
+          type: o.status === "approved" ? ("order_approved" as const) : ("order_rejected" as const),
           title: o.status === "approved" ? "Pedido aprovado!" : "Pedido recusado",
           body: o.product_name,
           created_at: o.updated_at,
@@ -135,7 +135,7 @@ export const NotificationsBell = () => {
             return [
               {
                 id,
-                type: (o.status === "approved" ? "order_approved" : "order_rejected") as const,
+                type: o.status === "approved" ? ("order_approved" as const) : ("order_rejected" as const),
                 title: o.status === "approved" ? "Pedido aprovado!" : "Pedido recusado",
                 body: o.product_name,
                 created_at: o.updated_at,
