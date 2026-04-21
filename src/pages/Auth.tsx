@@ -64,6 +64,13 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
+        // Check if username is taken
+        const { data: existingUser } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
+        if (existingUser) {
+          toast.error("Já existe um usuário com aquele nome");
+          return;
+        }
+
         const loginEmail = fakeEmail(username);
         const { error } = await supabase.auth.signUp({
           email: loginEmail,
@@ -73,7 +80,11 @@ const Auth = () => {
           },
         });
         if (error) {
-          toast.error(error.message);
+          if (error.message.includes("already registered")) {
+            toast.error("Já existe um usuário com aquele nome");
+          } else {
+            toast.error(error.message);
+          }
           return;
         }
         toast.success("Conta criada com sucesso!");
@@ -85,12 +96,18 @@ const Auth = () => {
           if (data?.email) {
             loginEmail = data.email;
           } else {
-            loginEmail = fakeEmail(username);
+            // Se tentou entrar com username e ele não está na tabela
+            toast.error("Usuário Inválido");
+            return;
           }
         }
         const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
         if (error) {
-          toast.error("Usuário/e-mail ou senha inválidos");
+          if (error.message.includes("Invalid login credentials")) {
+            toast.error("Senha Inválida");
+          } else {
+            toast.error(error.message);
+          }
           return;
         }
         toast.success("Bem-vindo de volta!");

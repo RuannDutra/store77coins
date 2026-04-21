@@ -75,14 +75,16 @@ export const NotificationsBell = () => {
         .limit(20);
 
       (orders || []).forEach((o: any) => {
+        const id = `order-${o.id}-${o.status}`;
+        if (seen.has(id)) return; // Skip already seen
         // Only notify the buyer about their own status changes
         list.push({
-          id: `order-${o.id}-${o.status}`,
+          id,
           type: o.status === "approved" ? ("order_approved" as const) : ("order_rejected" as const),
           title: o.status === "approved" ? "Pedido aprovado!" : "Pedido recusado",
           body: o.product_name,
           created_at: o.updated_at,
-          read: seen.has(`order-${o.id}-${o.status}`),
+          read: false,
           href: "/orders",
         });
       });
@@ -96,13 +98,15 @@ export const NotificationsBell = () => {
         .limit(20);
 
       (msgs || []).forEach((m: any) => {
+        const id = `msg-${m.id}`;
+        if (seen.has(id)) return; // Skip already seen
         list.push({
-          id: `msg-${m.id}`,
+          id,
           type: "message" as const,
           title: m.is_admin ? "Nova mensagem do admin" : "Nova mensagem do cliente",
           body: m.content.slice(0, 60),
           created_at: m.created_at,
-          read: seen.has(`msg-${m.id}`),
+          read: false,
           href: isAdmin ? "/admin" : "/orders",
         });
       });
@@ -183,7 +187,9 @@ export const NotificationsBell = () => {
     const seen = getSeen();
     notifs.forEach((n) => seen.add(n.id));
     persistSeen(seen);
-    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    // Remove all notifications from the list
+    setNotifs([]);
+    setOpen(false);
   };
 
   const onOpen = (o: boolean) => {
@@ -229,7 +235,14 @@ export const NotificationsBell = () => {
                 <Link
                   key={n.id}
                   to={n.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    // Mark this single notification as read
+                    const seen = getSeen();
+                    seen.add(n.id);
+                    persistSeen(seen);
+                    setNotifs((prev) => prev.filter((item) => item.id !== n.id));
+                    setOpen(false);
+                  }}
                   className={cn(
                     "flex gap-3 p-3 border-b border-border hover:bg-muted/50 transition-colors",
                     !n.read && "bg-primary/5"
