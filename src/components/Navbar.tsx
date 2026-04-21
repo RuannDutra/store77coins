@@ -28,6 +28,7 @@ export const Navbar = () => {
         <nav className="flex items-center gap-2">
           {user ? (
             <>
+              <NotificationsBell />
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/orders">
                   <ShoppingBag className="h-4 w-4" />
