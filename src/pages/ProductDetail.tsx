@@ -120,7 +120,9 @@ const ProductDetail = () => {
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
 
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-start">
+        {/* Linha superior: Foto | Descrição */}
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-start mb-8">
+          {/* Imagem */}
           <div className="overflow-hidden rounded-2xl border border-border self-start">
             {product.image_url ? (
               <img src={product.image_url} alt={product.name} className="w-full h-auto block" />
@@ -131,6 +133,7 @@ const ProductDetail = () => {
             )}
           </div>
 
+          {/* Descrição */}
           <div className="flex flex-col">
             {product.categories && (
               <span className="text-xs font-medium uppercase tracking-wider text-primary mb-2">
@@ -150,49 +153,50 @@ const ProductDetail = () => {
             </div>
 
             {product.description && (
-              <p className="text-muted-foreground leading-relaxed mb-8 whitespace-pre-wrap">
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                 {product.description}
               </p>
             )}
+          </div>
+        </div>
 
-            <div className="mt-auto rounded-2xl border border-border bg-card p-6">
-              {product.variants && product.variants.length > 0 && (
-                <div className="mb-6 space-y-3">
-                  <p className="text-sm font-medium">Selecione uma opção:</p>
-                  <div className="grid gap-2">
-                    {product.variants.map((v, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setSelectedVariant(idx)}
-                        className={`flex justify-between items-center p-3 rounded-lg border text-left transition-colors ${
-                          selectedVariant === idx ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                        }`}
-                      >
-                        <span className="font-medium">{v.name}</span>
-                        <span className="text-primary font-bold">R$ {Number(v.price).toFixed(2).replace(".", ",")}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex items-end justify-between mb-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Preço</p>
-                  <p className="font-display text-4xl font-bold text-primary">
-                    R$ {Number(product.variants && selectedVariant !== null ? product.variants[selectedVariant].price : product.price).toFixed(2).replace(".", ",")}
-                  </p>
-                </div>
+        {/* Botão de compra centralizado abaixo */}
+        <div className="max-w-md mx-auto w-full rounded-2xl border border-border bg-card p-6">
+          {product.variants && product.variants.length > 0 && (
+            <div className="mb-6 space-y-3">
+              <p className="text-sm font-medium">Selecione uma opção:</p>
+              <div className="grid gap-2">
+                {product.variants.map((v, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedVariant(idx)}
+                    className={`flex justify-between items-center p-3 rounded-lg border text-left transition-colors ${
+                      selectedVariant === idx ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <span className="font-medium">{v.name}</span>
+                    <span className="text-primary font-bold">R$ {Number(v.price).toFixed(2).replace(".", ",")}</span>
+                  </button>
+                ))}
               </div>
-              <Button size="lg" className="w-full text-base" onClick={handleBuy} disabled={buying}>
-                {buying && <Loader2 className="h-4 w-4 animate-spin" />}
-                Comprar agora
-              </Button>
-              <p className="text-xs text-muted-foreground text-center mt-3">
-                Após o pagamento, seu pedido será aprovado em até 24h por um administrador.
+            </div>
+          )}
+
+          <div className="flex items-end justify-between mb-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Preço</p>
+              <p className="font-display text-4xl font-bold text-primary">
+                R$ {Number(product.variants && selectedVariant !== null ? product.variants[selectedVariant].price : product.price).toFixed(2).replace(".", ",")}
               </p>
             </div>
           </div>
+          <Button size="lg" className="w-full text-base" onClick={handleBuy} disabled={buying}>
+            {buying && <Loader2 className="h-4 w-4 animate-spin" />}
+            Comprar agora
+          </Button>
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            Após o pagamento, seu pedido será aprovado em até 24h por um administrador.
+          </p>
         </div>
 
         <ProductReviews productId={product.id} />
