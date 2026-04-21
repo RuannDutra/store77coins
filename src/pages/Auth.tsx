@@ -14,7 +14,7 @@ const fakeEmail = (u: string) => `${u.toLowerCase()}@77coins.local`;
 const validateUsername = (u: string): string | null => {
   if (!u) return "Informe um usuário";
   if (/\s/.test(u)) return "Não pode conter espaços";
-  if (/^[._0-9]/.test(u)) return "Não pode começar com número ou pontuação";
+  if (/^[._]/.test(u)) return "Não pode começar com pontuação";
   if (u.length < 3) return "Mínimo 3 caracteres";
   if (u.length > 30) return "Máximo 30 caracteres";
   if (!/^[a-zA-Z0-9_]+$/.test(u)) return "Use apenas letras, números e _";
