@@ -188,12 +188,8 @@ const ProductDetail = () => {
                 {buying && <Loader2 className="h-4 w-4 animate-spin" />}
                 Comprar agora
               </Button>
-              <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Pagamento seguro via GOAT Pay
-              </div>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Após o pagamento, seu pedido fica em análise por até 24h.
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Após o pagamento, seu pedido será aprovado em até 24h por um administrador.
               </p>
             </div>
           </div>
