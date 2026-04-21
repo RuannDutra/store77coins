@@ -33,7 +33,7 @@ export const AdminReviews = () => {
     const list = (data as any) || [];
     setReviews(list);
 
-    const uids = [...new Set(list.map((r: Review) => r.user_id))];
+    const uids = Array.from(new Set(list.map((r: Review) => r.user_id)));
     if (uids.length) {
       const { data: profs } = await supabase.from("profiles").select("id, username").in("id", uids);
       const map: Record<string, string> = {};
