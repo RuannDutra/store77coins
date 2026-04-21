@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2, Plus, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Trash2, Plus, Loader2, Edit } from "lucide-react";
 import { toast } from "sonner";
 
 interface Category {
@@ -19,6 +20,9 @@ export const AdminCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState<Category | null>(null);
+  const [editName, setEditName] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     const { data } = await supabase.from("categories").select("*").order("name");
@@ -48,6 +52,27 @@ export const AdminCategories = () => {
     load();
   };
 
+  const openEdit = (c: Category) => {
+    setEditing(c);
+    setEditName(c.name);
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const trimmed = editName.trim();
+    if (trimmed.length < 2) return toast.error("Nome muito curto");
+    setSavingEdit(true);
+    const { error } = await supabase
+      .from("categories")
+      .update({ name: trimmed, slug: slugify(trimmed) })
+      .eq("id", editing.id);
+    setSavingEdit(false);
+    if (error) return toast.error(error.message);
+    toast.success("Atualizada");
+    setEditing(null);
+    load();
+  };
+
   return (
     <div className="space-y-6 max-w-xl">
       <form onSubmit={handleAdd} className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -71,13 +96,34 @@ export const AdminCategories = () => {
                 <p className="font-medium">{c.name}</p>
                 <p className="text-xs text-muted-foreground">{c.slug}</p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
             </div>
           ))
         )}
       </div>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar categoria</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Nome</Label>
+            <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            <Button className="w-full" onClick={saveEdit} disabled={savingEdit}>
+              {savingEdit && <Loader2 className="h-4 w-4 animate-spin" />}
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

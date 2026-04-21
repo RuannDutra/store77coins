@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Clock, Loader2, ShieldCheck, Zap, ArrowLeft } from "lucide-react";
+import { ProductReviews } from "@/components/ProductReviews";
 
 interface Product {
   id: string;
@@ -169,6 +170,8 @@ const ProductDetail = () => {
             </div>
           </div>
         </div>
+
+        <ProductReviews productId={product.id} />
       </div>
     </div>
   );
