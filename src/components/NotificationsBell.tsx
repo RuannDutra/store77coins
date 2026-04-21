@@ -60,7 +60,7 @@ export const NotificationsBell = () => {
         // Only notify the buyer about their own status changes
         list.push({
           id: `order-${o.id}-${o.status}`,
-          type: o.status === "approved" ? "order_approved" : "order_rejected",
+          type: (o.status === "approved" ? "order_approved" : "order_rejected") as const,
           title: o.status === "approved" ? "Pedido aprovado!" : "Pedido recusado",
           body: o.product_name,
           created_at: o.updated_at,
@@ -80,7 +80,7 @@ export const NotificationsBell = () => {
       (msgs || []).forEach((m: any) => {
         list.push({
           id: `msg-${m.id}`,
-          type: "message",
+          type: "message" as const,
           title: m.is_admin ? "Nova mensagem do admin" : "Nova mensagem do cliente",
           body: m.content.slice(0, 60),
           created_at: m.created_at,
@@ -109,7 +109,7 @@ export const NotificationsBell = () => {
             return [
               {
                 id,
-                type: "message",
+                type: "message" as const,
                 title: m.is_admin ? "Nova mensagem do admin" : "Nova mensagem do cliente",
                 body: String(m.content).slice(0, 60),
                 created_at: m.created_at,
@@ -135,7 +135,7 @@ export const NotificationsBell = () => {
             return [
               {
                 id,
-                type: o.status === "approved" ? "order_approved" : "order_rejected",
+                type: (o.status === "approved" ? "order_approved" : "order_rejected") as const,
                 title: o.status === "approved" ? "Pedido aprovado!" : "Pedido recusado",
                 body: o.product_name,
                 created_at: o.updated_at,
