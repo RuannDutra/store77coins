@@ -27,13 +27,21 @@ const Profile = () => {
     }
 
     const fetchProfile = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("username, email, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
 
-      if (data) {
+      if (error || !data) {
+        // avatar_url column may not exist yet — fallback without it
+        const { data: fallback } = await supabase
+          .from("profiles")
+          .select("username, email")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (fallback) setProfile({ ...(fallback as any), avatar_url: null });
+      } else {
         setProfile(data as any);
       }
       setLoading(false);

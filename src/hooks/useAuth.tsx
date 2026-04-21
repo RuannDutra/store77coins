@@ -31,13 +31,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
-    const [{ data: roleData }, { data: profileData }] = await Promise.all([
+    // Try with avatar_url; if column doesn't exist yet fall back gracefully
+    const [{ data: roleData }, { data: profileData, error: profileError }] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
       supabase.from("profiles").select("username, avatar_url").eq("id", userId).maybeSingle(),
     ]);
     setIsAdmin(!!roleData);
-    setUsername((profileData as any)?.username ?? null);
-    setAvatarUrl((profileData as any)?.avatar_url ?? null);
+
+    if (profileError || !profileData) {
+      // avatar_url column may not exist yet — retry without it
+      const { data: fallback } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", userId)
+        .maybeSingle();
+      setUsername((fallback as any)?.username ?? null);
+      setAvatarUrl(null);
+    } else {
+      setUsername((profileData as any)?.username ?? null);
+      setAvatarUrl((profileData as any)?.avatar_url ?? null);
+    }
   };
 
   useEffect(() => {
