@@ -80,6 +80,41 @@ const Orders = () => {
     }
     if (!user) return;
     loadOrders();
+
+    // Realtime: atualiza automaticamente quando o admin muda o status do pedido
+    const channel = supabase
+      .channel(`orders-user-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as Order;
+          setOrders((prev) =>
+            prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "orders",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // New order inserted — reload full list
+          loadOrders();
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user, authLoading, navigate]);
 
   const handleSaveReview = async () => {

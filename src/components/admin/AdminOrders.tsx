@@ -71,7 +71,43 @@ export const AdminOrders = () => {
     }
   };
 
-  useEffect(() => { load(); }, [filter]);
+  useEffect(() => {
+    load();
+
+    // Realtime: novos pedidos e mudanças de status aparecem sem F5
+    const channel = supabase
+      .channel("admin-orders-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders" },
+        () => {
+          // Reload for inserts to get full data including joins
+          load();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        (payload) => {
+          const updated = payload.new as Order;
+          setOrders((prev) => {
+            const exists = prev.some((o) => o.id === updated.id);
+            if (!exists) return prev; // different filter view — ignore
+            return prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o));
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "orders" },
+        (payload) => {
+          setOrders((prev) => prev.filter((o) => o.id !== (payload.old as any).id));
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [filter]);
 
   const openAction = (o: Order, a: "approved" | "rejected" | "delivered") => {
     setActing(o);

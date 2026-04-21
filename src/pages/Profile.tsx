@@ -58,18 +58,11 @@ const Profile = () => {
     }
     setUploadingAvatar(true);
 
-    // Ensure the bucket exists (creates it if missing)
-    await supabase.storage.createBucket("avatars", {
-      public: true,
-      fileSizeLimit: 2097152,
-      allowedMimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
-    });
-    // ↑ If bucket already exists Supabase returns an error we can safely ignore
-
     const ext = file.name.split(".").pop();
-    const path = `${user.id}/avatar.${ext}`;
+    // Use the existing product-images bucket with an avatars/ subfolder
+    const path = `avatars/${user.id}/avatar.${ext}`;
     const { error: uploadError } = await supabase.storage
-      .from("avatars")
+      .from("product-images")
       .upload(path, file, { upsert: true });
 
     if (uploadError) {
@@ -77,7 +70,7 @@ const Profile = () => {
       setUploadingAvatar(false);
       return;
     }
-    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
     // Cache-bust so the new image appears immediately
     const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
     const { error: updateError } = await supabase

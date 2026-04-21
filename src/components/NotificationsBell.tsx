@@ -20,24 +20,21 @@ interface Notif {
 
 const STORAGE_KEY = (uid: string) => `77c_notif_seen_${uid}`;
 
-/** Short pleasant ping via Web Audio API — no external files needed */
+// Short 440Hz ping WAV encoded as base64 — plays without user-gesture restriction
+const PING_WAV = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAA" +
+  "EAAQAAgD4AAIA+AAABAAgAZGF0YUoGAAAAAAAAMgBjAIoApAC1AL" +
+  "YApACKAGMAngAzAAAA0v+u/5T/hf+E/5T/rv/S//8AUQCAAJ0Aqg" +
+  "CqAJ0AgABRAP//0v+u/5T/hf+E/5T/rv/S//8AUQCAAJ0AqgCqAJ" +
+  "0AgABRAP//0v+u/5T/hf+E/5T/rv/S//8AUQCAAJ0AqgCqAJ0AgABR" +
+  "AP//0v+u/5T/hf+E/5T/rv/SAAAAAA==";
+
 const playNotifSound = () => {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);        // A5
-    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08); // E6
-    gain.gain.setValueAtTime(0.25, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.35);
-    osc.onended = () => ctx.close();
+    const audio = new Audio(PING_WAV);
+    audio.volume = 0.4;
+    audio.play().catch(() => {/* blocked by browser policy — silent */});
   } catch {
-    // AudioContext not supported — silently skip
+    // Not supported — silent
   }
 };
 
