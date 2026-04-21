@@ -30,13 +30,10 @@ const Auth = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup" | "verify">(params.get("mode") === "signup" ? "signup" : "login");
+  const [mode, setMode] = useState<"login" | "signup">(params.get("mode") === "signup" ? "signup" : "login");
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
   const [touchedU, setTouchedU] = useState(false);
-  const [touchedE, setTouchedE] = useState(false);
   const [touchedP, setTouchedP] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -62,21 +59,10 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      if (mode === "verify") {
-        const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'signup' });
-        if (error) {
-          toast.error("Código inválido ou expirado.");
-          return;
-        }
-        toast.success("Conta verificada com sucesso! Bem-vindo.");
-        navigate("/");
-        return;
-      }
-
       if (mode === "signup") {
-        if (!email.includes("@")) return toast.error("Informe um e-mail válido.");
+        const loginEmail = fakeEmail(username);
         const { error } = await supabase.auth.signUp({
-          email,
+          email: loginEmail,
           password,
           options: {
             data: { username },
@@ -86,8 +72,8 @@ const Auth = () => {
           toast.error(error.message);
           return;
         }
-        toast.success("Código enviado para o seu e-mail!");
-        setMode("verify");
+        toast.success("Conta criada com sucesso!");
+        navigate("/");
       } else {
         let loginEmail = username;
         if (!username.includes("@")) {
@@ -126,34 +112,22 @@ const Auth = () => {
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-card-dark">
           <h1 className="font-display text-2xl font-bold mb-1">
-            {mode === "login" ? "Entrar" : mode === "verify" ? "Verificar E-mail" : "Criar conta"}
+            {mode === "login" ? "Entrar" : "Criar conta"}
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
-            {mode === "login" ? "Acesse sua conta para comprar" : mode === "verify" ? "Digite o código enviado para o seu e-mail" : "Cadastre-se em segundos"}
+            {mode === "login" ? "Acesse sua conta para comprar" : "Cadastre-se em segundos"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {mode === "verify" ? (
-              <div className="space-y-2">
-                <Label htmlFor="otp">Código de verificação</Label>
-                <Input
-                  id="otp"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="Ex: 123456"
-                  required
-                />
-              </div>
-            ) : (
-              <>
+            <>
                 <div className="space-y-2">
-                  <Label htmlFor="username">{mode === "login" ? "Usuário ou E-mail" : "Usuário"}</Label>
+                  <Label htmlFor="username">Usuário</Label>
                   <Input
                     id="username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     onBlur={() => setTouchedU(true)}
-                    placeholder={mode === "login" ? "seu_usuario ou email@exemplo.com" : "seu_usuario"}
+                    placeholder="seu_usuario"
                     autoComplete="username"
                     className={cn(showUserError && "border-destructive focus-visible:ring-destructive")}
                     required
@@ -164,20 +138,6 @@ const Auth = () => {
                     </p>
                   )}
                 </div>
-                {mode === "signup" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="email">E-mail</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onBlur={() => setTouchedE(true)}
-                      placeholder="seu@email.com"
-                      required
-                    />
-                  </div>
-                )}
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
                   <Input
@@ -205,22 +165,19 @@ const Auth = () => {
                   )}
                 </div>
               </>
-            )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {mode === "login" ? "Entrar" : mode === "verify" ? "Verificar" : "Criar conta"}
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {mode === "login" ? "Entrar" : "Criar conta"}
             </Button>
           </form>
 
-          {mode !== "verify" && (
-            <button
-              type="button"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
-              className="w-full mt-6 text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setMode(mode === "login" ? "signup" : "login")}
+            className="w-full mt-6 text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
+          </button>
         </div>
       </div>
     </div>

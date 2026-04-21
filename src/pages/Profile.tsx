@@ -87,10 +87,7 @@ const Profile = () => {
                 <Label className="text-muted-foreground">Usuário</Label>
                 <div className="font-medium text-lg mt-1">{profile?.username || "Carregando..."}</div>
               </div>
-              <div>
-                <Label className="text-muted-foreground">E-mail</Label>
-                <div className="font-medium mt-1">{profile?.email || (user?.email?.includes("@77coins.local") ? "E-mail não configurado" : user?.email)}</div>
-              </div>
+
             </div>
           </div>
 
