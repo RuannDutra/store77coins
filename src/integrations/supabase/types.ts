@@ -179,18 +179,21 @@ export type Database = {
           email: string | null
           id: string
           username: string
+          avatar_url: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           id: string
           username: string
+          avatar_url?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           id?: string
           username?: string
+          avatar_url?: string | null
         }
         Relationships: []
       }

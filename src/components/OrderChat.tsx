@@ -16,18 +16,62 @@ interface Message {
   created_at: string;
 }
 
+interface SenderInfo {
+  username: string;
+  avatar_url: string | null;
+}
+
 interface Props {
   orderId: string;
   productName: string;
 }
 
+const AvatarBubble = ({ username, avatarUrl, size = 32 }: { username: string; avatarUrl: string | null; size?: number }) => {
+  const initial = username?.[0]?.toUpperCase() ?? "?";
+  return avatarUrl ? (
+    <img
+      src={avatarUrl}
+      alt={username}
+      style={{ width: size, height: size }}
+      className="rounded-full object-cover flex-shrink-0 ring-2 ring-border"
+    />
+  ) : (
+    <div
+      style={{ width: size, height: size }}
+      className="rounded-full flex-shrink-0 bg-primary/20 ring-2 ring-border flex items-center justify-center text-[11px] font-bold text-primary"
+    >
+      {initial}
+    </div>
+  );
+};
+
 export const OrderChat = ({ orderId, productName }: Props) => {
-  const { user, isAdmin } = useAuth();
+  const { user, username: myUsername, avatarUrl: myAvatar } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [senders, setSenders] = useState<Record<string, SenderInfo>>({});
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
+
+  // Fetch profile info for a list of user IDs (only the ones not already cached)
+  const fetchSenders = async (ids: string[]) => {
+    const missing = ids.filter((id) => !senders[id]);
+    if (missing.length === 0) return;
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username, avatar_url")
+      .in("id", missing);
+    if (data) {
+      setSenders((prev) => {
+        const next = { ...prev };
+        (data as any[]).forEach((p) => {
+          next[p.id] = { username: p.username, avatar_url: p.avatar_url ?? null };
+        });
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -38,8 +82,11 @@ export const OrderChat = ({ orderId, productName }: Props) => {
         .eq("order_id", orderId)
         .order("created_at", { ascending: true });
       if (active) {
-        setMessages((data as any) || []);
+        const msgs = (data as Message[]) || [];
+        setMessages(msgs);
         setLoading(false);
+        const ids = [...new Set(msgs.map((m) => m.sender_id))];
+        fetchSenders(ids);
       }
     };
     load();
@@ -51,12 +98,12 @@ export const OrderChat = ({ orderId, productName }: Props) => {
         { event: "INSERT", schema: "public", table: "order_messages", filter: `order_id=eq.${orderId}` },
         (payload) => {
           const msg = payload.new as Message;
-          // Segurança: ignorar mensagens de outros pedidos mesmo que o filtro falhe
           if (msg.order_id !== orderId) return;
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
+          fetchSenders([msg.sender_id]);
         }
       )
       .subscribe();
@@ -116,21 +163,42 @@ export const OrderChat = ({ orderId, productName }: Props) => {
         ) : (
           messages.map((m) => {
             const mine = m.sender_id === user?.id;
+            const sender = senders[m.sender_id];
+            // If sender info not loaded yet, fall back to current user info for own messages
+            const displayName = sender?.username ?? (mine ? (myUsername ?? "Você") : "...");
+            const avatarUrl = sender?.avatar_url ?? (mine ? myAvatar : null);
+
             return (
-              <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+              <div key={m.id} className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
+                {/* Avatar on the LEFT for others */}
+                {!mine && (
+                  <AvatarBubble username={displayName} avatarUrl={avatarUrl} size={30} />
+                )}
+
                 <div
                   className={cn(
-                    "max-w-[75%] rounded-2xl px-4 py-2 text-sm",
+                    "max-w-[72%] rounded-2xl px-3 py-2 text-sm",
                     mine
                       ? "bg-primary text-primary-foreground rounded-br-sm"
                       : "bg-muted text-foreground rounded-bl-sm"
                   )}
                 >
-                  <p className="text-[10px] opacity-70 mb-0.5">
-                    {m.is_admin ? "Admin" : "Cliente"} · {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  <p className="text-[10px] font-semibold opacity-80 mb-0.5">
+                    {displayName}
+                    {m.is_admin && (
+                      <span className="ml-1 text-[9px] bg-yellow-500/20 text-yellow-400 px-1 py-0.5 rounded font-bold">Admin</span>
+                    )}
+                    <span className="font-normal opacity-60 ml-1">
+                      · {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
                   </p>
                   <p className="whitespace-pre-wrap break-words">{m.content}</p>
                 </div>
+
+                {/* Avatar on the RIGHT for own messages */}
+                {mine && (
+                  <AvatarBubble username={displayName} avatarUrl={avatarUrl} size={30} />
+                )}
               </div>
             );
           })
