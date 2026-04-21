@@ -34,16 +34,13 @@ const ProductDetail = () => {
     if (!id) return;
     supabase
       .from("products")
-      .select("id, name, description, price, image_url, delivery_type, checkout_url, variants, categories(name)")
+      .select("id, name, description, price, image_url, delivery_type, checkout_url, categories(name)")
       .eq("id", id)
       .maybeSingle()
       .then(({ data }) => {
         setProduct(data as any);
-        if (data && (data as any).variants && (data as any).variants.length > 0) {
-          setSelectedVariant(0);
-        }
         setLoading(false);
-        if (data) document.title = `${data.name} — 77 Coins`;
+        if (data) document.title = `${(data as any).name} — 77 Coins`;
       });
   }, [id]);
 
