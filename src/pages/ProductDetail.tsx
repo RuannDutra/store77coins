@@ -120,8 +120,8 @@ const ProductDetail = () => {
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
 
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-start">
+          <div className="overflow-hidden rounded-2xl border border-border self-start">
             {product.image_url ? (
               <img src={product.image_url} alt={product.name} className="w-full h-auto block" />
             ) : (
