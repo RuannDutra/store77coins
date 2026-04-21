@@ -125,7 +125,7 @@ export const AdminProducts = () => {
     }
 
     setSaving(true);
-    const payload = {
+    const payload: any = {
       name: form.name.trim(),
       description: form.description.trim() || null,
       price,
@@ -134,8 +134,11 @@ export const AdminProducts = () => {
       delivery_type: form.delivery_type,
       active: form.active,
       checkout_url: form.type === "normal" ? form.checkout_url.trim() || null : null,
-      variants: form.type === "dynamic" ? form.variants.map(v => ({ name: v.name.trim(), price: parseFloat(v.price), checkout_url: v.checkout_url.trim() })) : null,
     };
+
+    if (form.type === "dynamic") {
+      payload.variants = form.variants.map(v => ({ name: v.name.trim(), price: parseFloat(v.price), checkout_url: v.checkout_url.trim() }));
+    }
 
     const { error } = editing
       ? await supabase.from("products").update(payload).eq("id", editing.id)
@@ -149,10 +152,10 @@ export const AdminProducts = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir produto?")) return;
-    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (!confirm("Excluir produto? Ele será apenas desativado para preservar o histórico de vendas.")) return;
+    const { error } = await supabase.from("products").update({ active: false }).eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success("Excluído");
+    toast.success("Produto desativado");
     load();
   };
 
