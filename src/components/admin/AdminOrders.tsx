@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, Clock, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Loader2, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import { OrderChat } from "@/components/OrderChat";
 
 interface Order {
   id: string;
@@ -27,15 +28,22 @@ export const AdminOrders = () => {
   const [action, setAction] = useState<"approved" | "rejected">("approved");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [openChat, setOpenChat] = useState<string | null>(null);
+  const [usernames, setUsernames] = useState<Record<string, string>>({});
 
   const load = async () => {
     let q = supabase.from("orders").select("*").order("created_at", { ascending: false });
     if (filter !== "all") q = q.eq("status", filter);
     const { data } = await q;
-
-    // Fetch usernames separately (RLS allows admin to read all profiles via has_role check on user_roles, but profile RLS is owner-only)
-    // We'll fetch via a single in() on profiles using admin role bypass... simplest: just show user_id short
-    setOrders((data as any) || []);
+    const list = (data as any) || [];
+    setOrders(list);
+    const uids = [...new Set(list.map((o: Order) => o.user_id))];
+    if (uids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, username").in("id", uids);
+      const map: Record<string, string> = {};
+      (profs || []).forEach((p: any) => (map[p.id] = p.username));
+      setUsernames(map);
+    }
   };
 
   useEffect(() => { load(); }, [filter]);
@@ -81,7 +89,7 @@ export const AdminOrders = () => {
                 <div>
                   <p className="font-medium">{o.product_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(o.created_at).toLocaleString("pt-BR")} · Cliente: {o.user_id.slice(0, 8)}
+                    {new Date(o.created_at).toLocaleString("pt-BR")} · Cliente: <span className="text-foreground font-medium">{usernames[o.user_id] || o.user_id.slice(0, 8)}</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -97,7 +105,7 @@ export const AdminOrders = () => {
               </div>
               {o.admin_notes && <p className="text-sm text-muted-foreground italic">{o.admin_notes}</p>}
               {o.status === "pending" && (
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-2 flex-wrap">
                   <Button size="sm" onClick={() => openAction(o, "approved")}>
                     <CheckCircle2 className="h-4 w-4" /> Aprovar
                   </Button>
@@ -108,6 +116,19 @@ export const AdminOrders = () => {
                     <Button size="sm" variant="outline" asChild>
                       <a href={o.checkout_url} target="_blank" rel="noopener noreferrer">Checkout</a>
                     </Button>
+                  )}
+                </div>
+              )}
+              {o.status === "approved" && (
+                <div className="pt-2">
+                  <Button size="sm" variant="outline" onClick={() => setOpenChat(openChat === o.id ? null : o.id)}>
+                    <MessageSquare className="h-4 w-4" />
+                    {openChat === o.id ? "Fechar chat" : "Abrir chat com cliente"}
+                  </Button>
+                  {openChat === o.id && (
+                    <div className="mt-3">
+                      <OrderChat orderId={o.id} productName={o.product_name} />
+                    </div>
                   )}
                 </div>
               )}

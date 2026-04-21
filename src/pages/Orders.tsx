@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, ShoppingBag, XCircle } from "lucide-react";
+import { OrderChat } from "@/components/OrderChat";
+import { CheckCircle2, Clock, MessageSquare, ShoppingBag, XCircle } from "lucide-react";
 
 interface Order {
   id: string;
@@ -28,6 +29,7 @@ const Orders = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openChat, setOpenChat] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Meus pedidos — 77 Coins";
@@ -58,13 +60,14 @@ const Orders = () => {
           <div className="text-center py-20 text-muted-foreground border border-border rounded-2xl">
             <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-30" />
             <p className="mb-4">Você ainda não fez nenhum pedido.</p>
-            <Button onClick={() => navigate("/")}>Explorar produtos</Button>
+            <Button onClick={() => navigate("/produtos")}>Explorar produtos</Button>
           </div>
         ) : (
           <div className="space-y-3">
             {orders.map((o) => {
               const cfg = statusConfig[o.status];
               const Icon = cfg.icon;
+              const chatOpen = openChat === o.id;
               return (
                 <div key={o.id} className="rounded-xl border border-border bg-card p-5">
                   <div className="flex items-start justify-between gap-4 mb-3">
@@ -78,22 +81,35 @@ const Orders = () => {
                       <Icon className="h-3 w-3" /> {cfg.label}
                     </Badge>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
                     <p className="font-display text-xl font-bold text-primary">
                       R$ {Number(o.amount).toFixed(2).replace(".", ",")}
                     </p>
-                    {o.status === "pending" && o.checkout_url && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={o.checkout_url} target="_blank" rel="noopener noreferrer">
-                          Ir para checkout
-                        </a>
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {o.status === "pending" && o.checkout_url && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={o.checkout_url} target="_blank" rel="noopener noreferrer">
+                            Ir para checkout
+                          </a>
+                        </Button>
+                      )}
+                      {o.status === "approved" && (
+                        <Button size="sm" onClick={() => setOpenChat(chatOpen ? null : o.id)}>
+                          <MessageSquare className="h-4 w-4" />
+                          {chatOpen ? "Fechar chat" : "Abrir chat"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   {o.admin_notes && (
                     <div className="mt-3 pt-3 border-t border-border text-sm">
                       <span className="text-muted-foreground">Mensagem do admin: </span>
                       {o.admin_notes}
+                    </div>
+                  )}
+                  {chatOpen && o.status === "approved" && (
+                    <div className="mt-4">
+                      <OrderChat orderId={o.id} productName={o.product_name} />
                     </div>
                   )}
                 </div>
