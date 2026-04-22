@@ -32,11 +32,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchProfile = async (userId: string, sessionUser?: any) => {
     // Try with avatar_url; if column doesn't exist yet fall back gracefully
-    const [{ data: roleData }, { data: profileData, error: profileError }] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
-      supabase.from("profiles").select("username").eq("id", userId).maybeSingle(),
-    ]);
+    const { data: roleData, error: roleError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (roleError) {
+      console.error("Erro ao verificar papel de admin:", roleError);
+    }
+
+    console.log("Status Admin:", !!roleData, "ID:", userId);
     setIsAdmin(!!roleData);
+
+    const { data: profileData } = await supabase.from("profiles").select("username").eq("id", userId).maybeSingle();
     setUsername((profileData as any)?.username ?? null);
 
     // avatar_url lives in auth user_metadata — no DB column required
