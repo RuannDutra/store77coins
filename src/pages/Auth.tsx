@@ -213,7 +213,6 @@ const Auth = () => {
                 {mode === "login" ? "Entrar" : "Criar conta"}
               </Button>
             </form>
-          )}
 
 
 
