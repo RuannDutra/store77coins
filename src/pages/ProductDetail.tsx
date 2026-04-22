@@ -29,7 +29,8 @@ const ProductDetail = () => {
   const [selectedVariant, setSelectedVariant] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState(false);
-
+  useEffect(() => {
+    if (!id) return;
     const load = () => {
       supabase
         .from("products")
