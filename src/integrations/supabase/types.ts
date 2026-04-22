@@ -132,7 +132,6 @@ export type Database = {
           image_url: string | null
           name: string
           price: number
-          variants: Json | null
           updated_at: string
         }
         Insert: {
@@ -146,7 +145,6 @@ export type Database = {
           image_url?: string | null
           name: string
           price: number
-          variants?: Json | null
           updated_at?: string
         }
         Update: {
@@ -160,7 +158,6 @@ export type Database = {
           image_url?: string | null
           name?: string
           price?: number
-          variants?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -179,21 +176,18 @@ export type Database = {
           email: string | null
           id: string
           username: string
-          avatar_url: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           id: string
           username: string
-          avatar_url?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           id?: string
           username?: string
-          avatar_url?: string | null
         }
         Relationships: []
       }
@@ -269,7 +263,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       delivery_type: "automatic" | "manual"
-      order_status: "pending" | "approved" | "rejected" | "delivered"
+      order_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -399,7 +393,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       delivery_type: ["automatic", "manual"],
-      order_status: ["pending", "approved", "rejected", "delivered"],
+      order_status: ["pending", "approved", "rejected"],
     },
   },
 } as const
