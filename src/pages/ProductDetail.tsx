@@ -142,14 +142,19 @@ const ProductDetail = () => {
             )}
             <h1 className="font-display text-3xl md:text-4xl font-bold mb-4">{product.name}</h1>
 
-            <div className="flex items-center gap-3 mb-6">
-              <Badge variant="outline" className="gap-1">
-                {product.delivery_type === "automatic" ? (
-                  <><Zap className="h-3 w-3" /> Entrega automática</>
-                ) : (
-                  <><Clock className="h-3 w-3" /> Entrega manual</>
-                )}
-              </Badge>
+            <div className="flex flex-col gap-2 mb-6">
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="gap-1">
+                  {product.delivery_type === "automatic" ? (
+                    <><Zap className="h-3 w-3" /> Entrega automática</>
+                  ) : (
+                    <><Clock className="h-3 w-3" /> Entrega manual</>
+                  )}
+                </Badge>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Estoque: <span className={product.stock > 0 ? "text-success" : "text-destructive"}>{product.stock}</span>
+                </span>
+              </div>
             </div>
 
             {product.description && (
