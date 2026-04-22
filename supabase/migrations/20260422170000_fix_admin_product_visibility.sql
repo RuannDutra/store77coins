@@ -9,6 +9,12 @@ COMMENT ON COLUMN public.products.variants IS 'Opções dinâmicas do produto (n
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.product_secrets TO authenticated;
 GRANT SELECT ON public.product_secrets TO anon;
 
+-- Forçar a recriação da FK com um nome padrão que o PostgREST reconhece facilmente
+ALTER TABLE public.product_secrets DROP CONSTRAINT IF EXISTS product_secrets_product_id_fkey;
+ALTER TABLE public.product_secrets 
+  ADD CONSTRAINT product_secrets_product_id_fkey 
+  FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+
 -- 2. Corrigir RLS da tabela products para garantir acesso total ao Admin
 -- Removemos as políticas antigas para garantir que as novas sejam limpas
 DROP POLICY IF EXISTS "Active products public read" ON public.products;

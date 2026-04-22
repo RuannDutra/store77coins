@@ -55,7 +55,7 @@ export const AdminProducts = () => {
       const [prodsRes, catsRes] = await Promise.all([
         supabase
           .from("products")
-          .select("*, product_secrets(checkout_url, variants_urls), categories(name)")
+          .select("*, product_secrets:product_secrets!product_secrets_product_id_fkey(checkout_url, variants_urls), categories(name)")
           .order("created_at", { ascending: false }),
         supabase.from("categories").select("id, name").order("name"),
       ]);
