@@ -36,7 +36,11 @@ const ProductDetail = () => {
       .select("id, name, description, price, image_url, delivery_type, variants, categories(name)")
       .eq("id", id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Erro ao buscar produto:", error);
+          toast.error("Erro ao carregar detalhes do produto");
+        }
         setProduct(data as any);
         setLoading(false);
         if (data) document.title = `${(data as any).name} — 77 Coins`;

@@ -12,6 +12,7 @@ interface Product {
   image_url: string | null;
   delivery_type: "automatic" | "manual";
   category_id: string | null;
+  active: boolean;
   categories: { id: string; name: string } | null;
 }
 
@@ -35,18 +36,32 @@ const Products = () => {
   useEffect(() => {
     document.title = "Produtos — 77 Coins";
     const load = async () => {
-      const [{ data: prods }, { data: cats }, { data: revs }] = await Promise.all([
-        supabase
-          .from("products")
-          .select("id, name, price, image_url, delivery_type, category_id, categories(id, name)")
-          .eq("active", true)
-          .order("created_at", { ascending: false }),
+      // First, get the admin status from our hook or a quick check
+      const { data: { user } } = await supabase.auth.getUser();
+      let isAdmin = false;
+      if (user) {
+        const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+        isAdmin = !!roleData;
+      }
+
+      let query = supabase
+        .from("products")
+        .select("id, name, price, image_url, delivery_type, category_id, active, categories(id, name)");
+      
+      if (!isAdmin) {
+        query = query.eq("active", true);
+      }
+
+      const [prodsRes, catsRes, revsRes] = await Promise.all([
+        query.order("created_at", { ascending: false }),
         supabase.from("categories").select("id, name, slug").order("name"),
         supabase.from("reviews").select("product_id, rating").eq("approved", true),
       ]);
 
-      setProducts((prods as any) || []);
-      setCategories(cats || []);
+      setProducts((prodsRes.data as any) || []);
+      setCategories(catsRes.data || []);
+
+      const revs = revsRes.data;
 
       // Calcula média por produto
       const map: RatingMap = {};
@@ -123,17 +138,23 @@ const Products = () => {
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filtered.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  id={p.id}
-                  name={p.name}
-                  price={Number(p.price)}
-                  image_url={p.image_url}
-                  delivery_type={p.delivery_type}
-                  category={p.categories}
-                  avgRating={ratings[p.id]?.avg ?? null}
-                  reviewCount={ratings[p.id]?.count ?? 0}
-                />
+                <div key={p.id} className="relative group">
+                  {!p.active && (
+                    <div className="absolute top-2 right-2 z-10 bg-destructive text-destructive-foreground text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm border border-destructive-foreground/20">
+                      Inativo
+                    </div>
+                  )}
+                  <ProductCard
+                    id={p.id}
+                    name={p.name}
+                    price={Number(p.price)}
+                    image_url={p.image_url}
+                    delivery_type={p.delivery_type}
+                    category={p.categories}
+                    avgRating={ratings[p.id]?.avg ?? null}
+                    reviewCount={ratings[p.id]?.count ?? 0}
+                  />
+                </div>
               ))}
             </div>
           )}

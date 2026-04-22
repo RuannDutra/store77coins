@@ -51,12 +51,29 @@ export const AdminProducts = () => {
   const [uploading, setUploading] = useState(false);
 
   const load = async () => {
-    const [{ data: prods }, { data: cats }] = await Promise.all([
-      supabase.from("products").select("*, product_secrets(checkout_url, variants_urls), categories(name)").order("created_at", { ascending: false }),
-      supabase.from("categories").select("id, name").order("name"),
-    ]);
-    setProducts((prods as any) || []);
-    setCategories(cats || []);
+    try {
+      const [prodsRes, catsRes] = await Promise.all([
+        supabase
+          .from("products")
+          .select("*, product_secrets(checkout_url, variants_urls), categories(name)")
+          .order("created_at", { ascending: false }),
+        supabase.from("categories").select("id, name").order("name"),
+      ]);
+
+      if (prodsRes.error) {
+        console.error("Erro ao buscar produtos:", prodsRes.error);
+        toast.error("Erro ao carregar produtos: " + prodsRes.error.message);
+      }
+      
+      if (catsRes.error) {
+        console.error("Erro ao buscar categorias:", catsRes.error);
+      }
+
+      setProducts((prodsRes.data as any) || []);
+      setCategories(catsRes.data || []);
+    } catch (err) {
+      console.error("Erro inesperado no AdminProducts:", err);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -69,7 +86,9 @@ export const AdminProducts = () => {
 
   const openEdit = (p: Product) => {
     setEditing(p);
-    const secrets = p.product_secrets || { checkout_url: "", variants_urls: [] };
+    // PostgREST returns child tables as arrays in 1:1 if not explicitly cast, handle both cases
+    const secretsData = Array.isArray(p.product_secrets) ? p.product_secrets[0] : p.product_secrets;
+    const secrets = secretsData || { checkout_url: "", variants_urls: [] };
     setForm({
       name: p.name,
       description: p.description || "",
