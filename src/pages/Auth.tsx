@@ -32,7 +32,7 @@ const passwordChecks = (p: string) => ({
   special: /[^A-Za-z0-9]/.test(p),
 });
 
-type Mode = "login" | "signup" | "forgot-email" | "forgot-code" | "forgot-newpw";
+type Mode = "login" | "signup" | "forgot";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ const Auth = () => {
 
   useEffect(() => { setShowPassword(false); }, [mode]);
 
-  const userError = useMemo(() => validateUsername(username), [username]);
+  const userError = useMemo(() => mode === "forgot" ? null : validateUsername(username), [username, mode]);
   const emailError = useMemo(() => validateEmail(email), [email]);
   const pwChecks = useMemo(() => passwordChecks(password), [password]);
   const pwValid = pwChecks.length && pwChecks.special;
@@ -184,57 +184,7 @@ const Auth = () => {
     }
   };
 
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateEmail(resetEmail)) return toast.error("Email inválido");
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("send-reset-code", { body: { email: resetEmail } });
-      if (error || (data as any)?.error) {
-        const errMsg = (data as any)?.error ?? error?.message ?? "";
-        if (errMsg === "not_found" || errMsg.includes("not_found")) {
-          toast.error("Não existe nenhuma conta com esse email");
-        } else {
-          toast.error("Erro ao enviar código: " + errMsg);
-        }
-        return;
-      }
-      toast.success("Código enviado para seu email!");
-      setMode("forgot-code");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleVerifyCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (resetCode.length !== 4 || !/^\d{4}$/.test(resetCode)) {
-      return toast.error("Código deve ter 4 dígitos");
-    }
-    setMode("forgot-newpw");
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPwValid) return toast.error("A senha não cumpre os requisitos");
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("reset-password-with-code", {
-        body: { email: resetEmail, code: resetCode, newPassword },
-      });
-      if (error || (data as any)?.error) {
-        toast.error("Erro: " + ((data as any)?.error ?? error?.message));
-        return;
-      }
-      toast.success("Senha alterada! Faça login.");
-      setMode("login");
-      setResetEmail("");
-      setResetCode("");
-      setNewPassword("");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const isForgot = mode.startsWith("forgot");
 
@@ -263,33 +213,27 @@ const Auth = () => {
           )}
 
           <h1 className="font-display text-2xl font-bold mb-1">
-
             {mode === "login" && "Entrar"}
             {mode === "signup" && "Criar conta"}
-            {mode === "forgot-email" && "Esqueci minha senha"}
-            {mode === "forgot-code" && "Verificar código"}
-            {mode === "forgot-newpw" && "Nova senha"}
+            {mode === "forgot" && "Esqueci minha senha"}
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
             {mode === "login" && "Acesse sua conta para comprar"}
             {mode === "signup" && "Cadastre-se em segundos"}
-            {mode === "forgot-email" && "Informe seu email para receber um código"}
-            {mode === "forgot-code" && `Código de 4 dígitos enviado para ${resetEmail}`}
-            {mode === "forgot-newpw" && "Defina uma nova senha"}
-
+            {mode === "forgot" && "Informe seu usuário ou email para receber o link"}
           </p>
 
-          {/* LOGIN / SIGNUP */}
-          {(mode === "login" || mode === "signup") && (
+          {/* LOGIN / SIGNUP / FORGOT */}
+          {(mode === "login" || mode === "signup" || mode === "forgot") && (
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-2">
-                <Label htmlFor="username">Usuário</Label>
+                <Label htmlFor="username">{mode === "forgot" ? "Usuário ou Email" : "Usuário"}</Label>
                 <Input
                   id="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   onBlur={() => setTouchedU(true)}
-                  placeholder="seu_usuario"
+                  placeholder={mode === "forgot" ? "seu_usuario ou email" : "seu_usuario"}
                   autoComplete="username"
                   className={cn(showUserError && "border-destructive focus-visible:ring-destructive")}
                   required
@@ -319,9 +263,9 @@ const Auth = () => {
                     {showEmailError ? emailError : "Usaremos para recuperação de senha."}
                   </p>
                 </div>
-
               )}
 
+              {mode !== "forgot" && (
               <div className="space-y-2">
                 <Label htmlFor="password">Senha</Label>
                 <div className="relative">
@@ -361,115 +305,23 @@ const Auth = () => {
                 {mode === "login" && (
                   <button
                     type="button"
-                    onClick={() => setMode("forgot-email")}
+                    onClick={() => setMode("forgot")}
                     className="text-xs text-muted-foreground hover:text-primary transition-colors"
                   >
                     Esqueci minha senha
                   </button>
                 )}
               </div>
+              )}
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {mode === "login" ? "Entrar" : "Criar conta"}
+                {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"}
               </Button>
             </form>
           )}
 
-          {/* FORGOT — STEP 1: EMAIL */}
-          {mode === "forgot-email" && (
-            <form onSubmit={handleSendCode} className="space-y-4" noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="resetEmail">Email da conta</Label>
-                <Input
-                  id="resetEmail"
-                  type="email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  autoComplete="email"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Enviar código
-              </Button>
-            </form>
-          )}
 
-          {/* FORGOT — STEP 2: CODE */}
-          {mode === "forgot-code" && (
-            <form onSubmit={handleVerifyCode} className="space-y-4" noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="code">Código (4 dígitos)</Label>
-                <Input
-                  id="code"
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                  maxLength={4}
-                  value={resetCode}
-                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  placeholder="0000"
-                  className="text-center text-2xl tracking-[0.5em] font-mono"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading || resetCode.length !== 4}>
-                Continuar
-              </Button>
-              <button
-                type="button"
-                onClick={() => setMode("forgot-email")}
-                className="w-full text-xs text-muted-foreground hover:text-primary transition-colors"
-              >
-                Reenviar código
-              </button>
-            </form>
-          )}
-
-          {/* FORGOT — STEP 3: NEW PASSWORD */}
-          {mode === "forgot-newpw" && (
-            <form onSubmit={handleResetPassword} className="space-y-4" noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="newpw">Nova senha</Label>
-                <div className="relative">
-                  <Input
-                    id="newpw"
-                    type={showPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                    className="pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <ul className="text-xs space-y-1 pt-1">
-                  <li className={cn("flex items-center gap-1.5", newPwChecks.length ? "text-success" : "text-muted-foreground")}>
-                    {newPwChecks.length ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                    Mais de 8 caracteres
-                  </li>
-                  <li className={cn("flex items-center gap-1.5", newPwChecks.special ? "text-success" : "text-muted-foreground")}>
-                    {newPwChecks.special ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                    Pelo menos 1 caractere especial
-                  </li>
-                </ul>
-              </div>
-              <Button type="submit" className="w-full" disabled={loading || !newPwValid}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Alterar senha
-              </Button>
-            </form>
-          )}
 
           {(mode === "login" || mode === "signup") && (
             <button
