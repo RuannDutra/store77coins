@@ -78,11 +78,12 @@ const ProductDetail = () => {
       return;
     }
 
-    toast.success("Pedido criado! Redirecionando para o checkout...");
+    if (data.checkout_url) {
+      window.open(data.checkout_url, "_blank");
+    }
+    
+    toast.success("Pedido criado! Redirecionando...");
     setTimeout(() => {
-      if (data.checkout_url) {
-        window.open(data.checkout_url, "_blank");
-      }
       navigate("/orders");
     }, 800);
   };
