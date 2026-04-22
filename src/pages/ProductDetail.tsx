@@ -18,6 +18,7 @@ interface Product {
   delivery_type: "automatic" | "manual";
   variants?: { name: string; price: number }[] | null;
   categories: { name: string } | null;
+  stock: number;
 }
 
 const ProductDetail = () => {
@@ -33,7 +34,7 @@ const ProductDetail = () => {
     if (!id) return;
     supabase
       .from("products")
-      .select("id, name, description, price, image_url, delivery_type, variants, categories(name)")
+      .select("id, name, description, price, image_url, delivery_type, variants, stock, categories(name)")
       .eq("id", id)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -189,9 +190,14 @@ const ProductDetail = () => {
               </p>
             </div>
           </div>
-          <Button size="lg" className="w-full text-base" onClick={handleBuy} disabled={buying}>
+          <Button 
+            size="lg" 
+            className="w-full text-base" 
+            onClick={handleBuy} 
+            disabled={buying || (product.stock <= 0)}
+          >
             {buying && <Loader2 className="h-4 w-4 animate-spin" />}
-            Comprar agora
+            {product.stock > 0 ? "Comprar agora" : "Aguarde o Estoque"}
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-3">
             Após o pagamento, seu pedido será aprovado em até 24h por um administrador.

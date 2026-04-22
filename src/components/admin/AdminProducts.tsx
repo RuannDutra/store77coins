@@ -20,6 +20,7 @@ interface Product {
   category_id: string | null;
   delivery_type: "automatic" | "manual";
   active: boolean;
+  stock: number;
   product_secrets?: {
     checkout_url: string | null;
     variants_urls: { name: string; checkout_url: string }[] | null;
@@ -36,6 +37,7 @@ const empty = {
   category_id: "",
   delivery_type: "manual" as "automatic" | "manual",
   active: true,
+  stock: 0,
   checkout_url: "",
   type: "normal" as "normal" | "dynamic",
   variants: [] as { name: string; price: string; checkout_url: string }[],
@@ -110,6 +112,7 @@ export const AdminProducts = () => {
       category_id: p.category_id || "",
       delivery_type: p.delivery_type,
       active: p.active,
+      stock: p.stock || 0,
       checkout_url: secrets.checkout_url || "",
       type: secrets.variants_urls && secrets.variants_urls.length > 0 ? "dynamic" : "normal",
       variants: p.variants ? p.variants.map((v: any, idx: number) => ({
@@ -174,6 +177,7 @@ export const AdminProducts = () => {
       category_id: form.category_id || null,
       delivery_type: form.delivery_type,
       active: form.active,
+      stock: parseInt(String(form.stock)) || 0,
       checkout_url: null, // Segredo salvo na tabela product_secrets
       variants: form.type === "dynamic" 
         ? form.variants.map(v => ({ name: v.name.trim(), price: parseFloat(v.price) })) 
@@ -332,9 +336,22 @@ export const AdminProducts = () => {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="active">Ativo (visível na loja)</Label>
-                <Switch id="active" checked={form.active} onCheckedChange={(v) => setForm({ ...form, active: v })} />
+              <div className="space-y-0.5">
+                <Label>Produto Ativo</Label>
+                <p className="text-[10px] text-muted-foreground">Visível para clientes</p>
               </div>
+              <Switch checked={form.active} onCheckedChange={(v) => setForm(f => ({ ...f, active: v }))} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Estoque Disponível</Label>
+              <Input 
+                type="number" 
+                value={form.stock} 
+                onChange={(e) => setForm(f => ({ ...f, stock: parseInt(e.target.value) || 0 }))} 
+                placeholder="Ex: 50"
+              />
+            </div>
               <Button type="submit" className="w-full" disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 Salvar
