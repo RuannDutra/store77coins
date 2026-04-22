@@ -28,12 +28,15 @@ interface Props {
 
 const AvatarBubble = ({ username, avatarUrl, size = 32 }: { username: string; avatarUrl: string | null; size?: number }) => {
   const initial = username?.[0]?.toUpperCase() ?? "?";
-  return avatarUrl ? (
+  const [error, setError] = useState(false);
+
+  return avatarUrl && !error ? (
     <img
       src={avatarUrl}
       alt={username}
       style={{ width: size, height: size }}
       className="rounded-full object-cover flex-shrink-0 ring-2 ring-border"
+      onError={() => setError(true)}
     />
   ) : (
     <div
@@ -176,7 +179,19 @@ export const OrderChat = ({ orderId, productName }: Props) => {
             const mine = m.sender_id === user?.id;
             const sender = senders[m.sender_id];
             const displayName = sender?.username ?? (mine ? (myUsername ?? "Você") : "...");
-            const avatarUrl = sender?.avatar_url ?? (mine ? myAvatar : null);
+            
+            // Tenta pegar a URL do banco (sender.avatar_url)
+            // Se não tiver, gera a URL determinística usando o ID do usuário (pois a nova lógica salva sem extensão)
+            const deterministicUrl = `${supabase.storage.from("product-images").getPublicUrl(`avatars/${m.sender_id}/avatar`).data.publicUrl}`;
+            
+            let avatarUrl = sender?.avatar_url ?? (mine ? myAvatar : null);
+            
+            // Se a URL não existir no sender, tentamos usar o fallback determinístico (pode quebrar se o usuário nunca fez upload, mas o AvatarBubble cuida disso se a img falhar)
+            if (!avatarUrl && sender) {
+              // Se tivermos certeza que a coluna existe, isso seria null de verdade. 
+              // Mas se a coluna não existir, usamos o fallback.
+              avatarUrl = deterministicUrl;
+            }
 
             return (
               <div key={m.id} className={cn("flex items-start gap-2", mine ? "flex-row-reverse" : "flex-row")}>

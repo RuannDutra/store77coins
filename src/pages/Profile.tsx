@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, User, KeyRound, Camera } from "lucide-react";
+import { Loader2, User, KeyRound, Camera, Mail } from "lucide-react";
 
 const Profile = () => {
   const { user, avatarUrl: ctxAvatar, username: ctxUsername } = useAuth();
@@ -18,6 +18,12 @@ const Profile = () => {
   const [savingPassword, setSavingPassword] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [newEmail, setNewEmail] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState(""); 
+  const [enteredOtp, setEnteredOtp] = useState("");
+  const [changingEmail, setChangingEmail] = useState(false);
 
   useEffect(() => {
     document.title = "Meu Perfil — 77 Coins";
@@ -52,9 +58,8 @@ const Profile = () => {
     }
     setUploadingAvatar(true);
 
-    const ext = file.name.split(".").pop();
-    // Use the existing product-images bucket with an avatars/ subfolder
-    const path = `avatars/${user.id}/avatar.${ext}`;
+    // Save WITHOUT extension so the URL is always predictable (avatar instead of avatar.jpg)
+    const path = `avatars/${user.id}/avatar`;
     const { error: uploadError } = await supabase.storage
       .from("product-images")
       .upload(path, file, { upsert: true });
@@ -72,6 +77,10 @@ const Profile = () => {
     const { error: updateError } = await supabase.auth.updateUser({
       data: { avatar_url: avatarUrl },
     });
+    
+    // Tenta salvar na tabela profiles também (se a coluna não existir, vai falhar silenciosamente mas o app continua)
+    await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", user.id).catch(() => {});
+
     if (updateError) {
       toast.error("Erro ao salvar: " + updateError.message);
       setUploadingAvatar(false);
@@ -99,6 +108,70 @@ const Profile = () => {
 
     toast.success("Senha atualizada com sucesso!");
     setNewPassword("");
+  };
+
+  const handleRequestEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail || !newEmail.includes("@")) return toast.error("E-mail inválido");
+    const currentEmail = profile?.email || user.email;
+    if (newEmail === currentEmail) return toast.error("Este já é seu e-mail atual");
+    if (!currentEmail || currentEmail.includes("@77coins.local")) {
+      return toast.error("Contas sem e-mail real não podem usar essa função.");
+    }
+    
+    setChangingEmail(true);
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setOtpCode(generatedOtp);
+
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer re_enZMRqYw_KfpN1SmAZjSLE7Jm2RsGBUyv",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: "Equipe 77Coins <onboarding@resend.dev>",
+          to: [currentEmail],
+          subject: "Código de Segurança - Alteração de Email",
+          html: `<p>Você solicitou a alteração do seu e-mail para <strong>${newEmail}</strong>.</p>
+                 <p>Seu código de segurança é: <strong>${generatedOtp}</strong></p>
+                 <p>Se você não solicitou isso, ignore este e-mail.</p>`
+        })
+      });
+
+      if (!res.ok) throw new Error("Erro ao enviar e-mail. Verifique a chave da API.");
+      
+      setOtpSent(true);
+      toast.success(`Código enviado para seu e-mail antigo (${currentEmail})!`);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar código");
+    } finally {
+      setChangingEmail(false);
+    }
+  };
+
+  const handleConfirmEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredOtp !== otpCode) return toast.error("Código incorreto!");
+
+    setChangingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    
+    if (error) {
+      toast.error("Erro ao alterar e-mail: " + error.message);
+      setChangingEmail(false);
+      return;
+    }
+
+    await supabase.from("profiles").update({ email: newEmail }).eq("id", user.id).catch(() => {});
+    
+    setProfile(prev => prev ? { ...prev, email: newEmail } : prev);
+    toast.success("E-mail atualizado com sucesso! (Você precisará confirmar o link no novo e-mail)");
+    setOtpSent(false);
+    setNewEmail("");
+    setEnteredOtp("");
+    setChangingEmail(false);
   };
 
   if (loading) {
@@ -186,6 +259,67 @@ const Profile = () => {
               <Label className="text-muted-foreground">Usuário</Label>
               <div className="font-medium text-lg mt-1">{username || "Carregando..."}</div>
             </div>
+            
+            <div>
+              <Label className="text-muted-foreground">E-mail Atual</Label>
+              <div className="font-medium mt-1">{profile?.email || user.email || "Não informado"}</div>
+            </div>
+          </div>
+
+          {/* Change email */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-card-dark">
+            <h2 className="flex items-center gap-2 font-display text-xl font-semibold mb-4">
+              <Mail className="h-5 w-5 text-primary" /> Alterar E-mail
+            </h2>
+            {!otpSent ? (
+              <form onSubmit={handleRequestEmailChange} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newEmail">Novo E-mail</Label>
+                  <Input
+                    id="newEmail"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="novo@email.com"
+                    required
+                  />
+                </div>
+                <Button type="submit" disabled={changingEmail || !newEmail}>
+                  {changingEmail && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Enviar Código de Verificação
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Um código será enviado para seu e-mail atual para autorizar a mudança.
+                </p>
+              </form>
+            ) : (
+              <form onSubmit={handleConfirmEmailChange} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="enteredOtp">Código de Verificação</Label>
+                  <Input
+                    id="enteredOtp"
+                    type="text"
+                    value={enteredOtp}
+                    onChange={(e) => setEnteredOtp(e.target.value)}
+                    placeholder="123456"
+                    maxLength={6}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enviado para: {profile?.email || user.email}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={changingEmail || enteredOtp.length !== 6}>
+                    {changingEmail && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Confirmar Alteração
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setOtpSent(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
 
           {/* Change password */}

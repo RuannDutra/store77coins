@@ -30,7 +30,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user } = useAuth();
-  const [mode, setMode] = useState<"login" | "signup">(params.get("mode") === "signup" ? "signup" : "login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">(params.get("mode") === "signup" ? "signup" : "login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [touchedU, setTouchedU] = useState(false);
@@ -63,6 +63,36 @@ const Auth = () => {
 
     setLoading(true);
     try {
+      if (mode === "forgot") {
+        let resetEmail = username;
+        if (!username.includes("@")) {
+          const { data } = await supabase.from("profiles").select("email").eq("username", username).maybeSingle();
+          if (data?.email) {
+            resetEmail = data.email;
+          } else {
+            toast.error("Usuário não encontrado ou sem e-mail cadastrado");
+            return;
+          }
+        }
+        
+        if (resetEmail.endsWith("@77coins.local")) {
+          toast.error("Esta conta não possui um e-mail real para recuperação.");
+          return;
+        }
+
+        const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+          redirectTo: `${window.location.origin}/profile`,
+        });
+
+        if (error) {
+          toast.error(error.message);
+        } else {
+          toast.success("Link de recuperação enviado para o e-mail associado!");
+          setMode("login");
+        }
+        return;
+      }
+
       if (mode === "signup") {
         // Check if username is taken
         const { data: existingUser } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
@@ -133,10 +163,14 @@ const Auth = () => {
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-card-dark">
           <h1 className="font-display text-2xl font-bold mb-1">
-            {mode === "login" ? "Entrar" : "Criar conta"}
+            {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Recuperar Senha"}
           </h1>
           <p className="text-sm text-muted-foreground mb-6">
-            {mode === "login" ? "Acesse sua conta para comprar" : "Cadastre-se em segundos"}
+            {mode === "login" 
+              ? "Acesse sua conta para comprar" 
+              : mode === "signup" 
+                ? "Cadastre-se em segundos" 
+                : "Informe seu usuário ou e-mail para receber um link de recuperação"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -159,6 +193,7 @@ const Auth = () => {
                     </p>
                   )}
                 </div>
+                {mode !== "forgot" && (
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
                   <div className="relative">
@@ -195,11 +230,23 @@ const Auth = () => {
                       </li>
                     </ul>
                   )}
+                  {mode === "login" && (
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setMode("forgot")}
+                        className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        Esqueceu a senha?
+                      </button>
+                    </div>
+                  )}
                 </div>
+              )}
               </>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {mode === "login" ? "Entrar" : "Criar conta"}
+              {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"}
             </Button>
           </form>
 
@@ -208,7 +255,7 @@ const Auth = () => {
             onClick={() => setMode(mode === "login" ? "signup" : "login")}
             className="w-full mt-6 text-sm text-muted-foreground hover:text-primary transition-colors"
           >
-            {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Entrar"}
+            {mode === "login" ? "Não tem conta? Cadastre-se" : mode === "signup" ? "Já tem conta? Entrar" : "Voltar para o login"}
           </button>
         </div>
       </div>
