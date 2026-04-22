@@ -151,6 +151,25 @@ export const OrderChat = ({ orderId, productName }: Props) => {
     setText("");
   };
 
+  const [orderStatus, setOrderStatus] = useState<string>("pending");
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const { data } = await supabase.from("orders").select("status").eq("id", orderId).maybeSingle();
+      if (data) setOrderStatus(data.status);
+    };
+    fetchStatus();
+
+    const sub = supabase.channel(`order-status-${orderId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, (payload) => {
+        setOrderStatus(payload.new.status);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [orderId]);
+
+  const isDelivered = orderStatus === "delivered";
+
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden flex flex-col h-[420px]">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3 bg-background/50">
@@ -184,8 +203,24 @@ export const OrderChat = ({ orderId, productName }: Props) => {
               avatarUrl = deterministicUrl;
             }
 
-            return (
-              <div key={m.id} className={cn("flex items-start gap-2", mine ? "flex-row-reverse" : "flex-row")}>
+                    {!n.read && <div className="h-2 w-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+                  </div>
+                );
+              }
+
+              // Mensagem de Sistema (Entrega)
+              if (m.content.startsWith("Sistema - Pedido Marcado como Entregue")) {
+                return (
+                  <div key={m.id} className="flex justify-center my-4">
+                    <div className="bg-success/10 border border-success/20 text-success text-[11px] px-4 py-1.5 rounded-full font-medium">
+                      {m.content}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={m.id} className={cn("flex items-start gap-2", mine ? "flex-row-reverse" : "flex-row")}>
                 {/* Avatar — always top-aligned */}
                 <AvatarBubble username={displayName} avatarUrl={avatarUrl} size={28} />
 
@@ -217,11 +252,11 @@ export const OrderChat = ({ orderId, productName }: Props) => {
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Digite sua mensagem..."
+          placeholder={isDelivered ? "Este chat foi encerrado." : "Digite sua mensagem..."}
           maxLength={1000}
-          disabled={sending}
+          disabled={sending || isDelivered}
         />
-        <Button type="submit" disabled={sending || !text.trim()} size="sm">
+        <Button type="submit" disabled={sending || !text.trim() || isDelivered} size="sm">
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </form>

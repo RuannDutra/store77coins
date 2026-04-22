@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +34,7 @@ const noteWithoutMarker = (notes: string | null) =>
 type UIStatus = "pending" | "approved" | "delivered" | "rejected" | "all";
 
 export const AdminOrders = () => {
+  const { username: adminUsername, user: adminUser } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<UIStatus>("pending");
   const [acting, setActing] = useState<Order | null>(null);
@@ -132,8 +134,21 @@ export const AdminOrders = () => {
       .update({ status: dbStatus, admin_notes: dbNotes })
       .eq("id", acting.id);
 
-    setSaving(false);
     if (error) return toast.error(error.message);
+
+    // Se for entregue, insere mensagem de sistema no chat
+    if (action === "delivered") {
+      const now = new Date().toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      const systemMsg = `Sistema - Pedido Marcado como Entregue por ${adminUsername || "Admin"} - ${now}`;
+      
+      await supabase.from("order_messages").insert({
+        order_id: acting.id,
+        sender_id: adminUser?.id,
+        content: systemMsg,
+        is_admin: true
+      });
+    }
+
     toast.success(
       action === "approved" ? "Pedido aprovado" :
       action === "delivered" ? "Pedido marcado como entregue" :

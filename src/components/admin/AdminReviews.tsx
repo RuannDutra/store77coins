@@ -42,7 +42,17 @@ export const AdminReviews = () => {
     }
   };
 
-  useEffect(() => { load(); }, [filter]);
+  useEffect(() => { 
+    load(); 
+    
+    const ch = supabase.channel("admin-reviews-realtime")
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => {
+        load();
+      })
+      .subscribe();
+      
+    return () => { supabase.removeChannel(ch); };
+  }, [filter]);
 
   const approve = async (id: string) => {
     const { error } = await supabase.from("reviews").update({ approved: true }).eq("id", id);

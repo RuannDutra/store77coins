@@ -73,6 +73,14 @@ const Products = () => {
       }
     };
     load();
+
+    const ch = supabase.channel("products-realtime")
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   const filtered = activeCategory

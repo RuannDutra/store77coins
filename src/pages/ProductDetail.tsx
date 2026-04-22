@@ -30,22 +30,32 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState(false);
 
-  useEffect(() => {
-    if (!id) return;
-    supabase
-      .from("products")
-      .select("id, name, description, price, image_url, delivery_type, variants, stock, categories(name)")
-      .eq("id", id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Erro ao buscar produto:", error);
-          toast.error("Erro ao carregar detalhes do produto");
-        }
-        setProduct(data as any);
-        setLoading(false);
-        if (data) document.title = `${(data as any).name} — 77 Coins`;
-      });
+    const load = () => {
+      supabase
+        .from("products")
+        .select("id, name, description, price, image_url, delivery_type, variants, stock, categories(name)")
+        .eq("id", id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Erro ao buscar produto:", error);
+            toast.error("Erro ao carregar detalhes do produto");
+          }
+          setProduct(data as any);
+          setLoading(false);
+          if (data) document.title = `${(data as any).name} — 77 Coins`;
+        });
+    };
+    
+    load();
+
+    const ch = supabase.channel(`product-detail-${id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products', filter: `id=eq.${id}` }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(ch); };
   }, [id]);
 
   const handleBuy = async () => {
