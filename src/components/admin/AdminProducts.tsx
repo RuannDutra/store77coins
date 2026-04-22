@@ -52,27 +52,40 @@ export const AdminProducts = () => {
 
   const load = async () => {
     try {
+      setProducts([]); // Limpa para mostrar loading visual se necessário
+      
       const [prodsRes, catsRes] = await Promise.all([
-        supabase
-          .from("products")
-          .select("*, product_secrets:product_secrets!product_secrets_product_id_fkey(checkout_url, variants_urls), categories(name)")
-          .order("created_at", { ascending: false }),
+        supabase.from("products").select("*").order("created_at", { ascending: false }),
         supabase.from("categories").select("id, name").order("name"),
       ]);
 
-      if (prodsRes.error) {
-        console.error("Erro ao buscar produtos:", prodsRes.error);
-        toast.error("Erro ao carregar produtos: " + prodsRes.error.message);
-      }
+      if (prodsRes.error) throw prodsRes.error;
       
-      if (catsRes.error) {
-        console.error("Erro ao buscar categorias:", catsRes.error);
+      const prods = prodsRes.data || [];
+      const cats = catsRes.data || [];
+
+      // Busca segredos separadamente para evitar erro de relacionamento no cache do Supabase
+      const { data: secrets, error: secretsError } = await supabase
+        .from("product_secrets")
+        .select("*")
+        .in("product_id", prods.map(p => p.id));
+
+      if (secretsError) {
+        console.warn("Erro ao buscar segredos:", secretsError);
       }
 
-      setProducts((prodsRes.data as any) || []);
-      setCategories(catsRes.data || []);
-    } catch (err) {
-      console.error("Erro inesperado no AdminProducts:", err);
+      // Une os produtos com seus segredos e categorias
+      const merged = prods.map(p => ({
+        ...p,
+        product_secrets: secrets?.find(s => s.product_id === p.id) || null,
+        categories: cats.find(c => c.id === p.category_id) || null
+      }));
+
+      setProducts(merged as any);
+      setCategories(cats);
+    } catch (err: any) {
+      console.error("Erro no AdminProducts:", err);
+      toast.error("Erro ao carregar: " + (err.message || "Erro desconhecido"));
     }
   };
 
