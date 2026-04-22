@@ -32,6 +32,7 @@ const passwordChecks = (p: string) => ({
   special: /[^A-Za-z0-9]/.test(p),
 });
 
+// Tipos de modos de tela suportados na página de autenticação
 type Mode = "login" | "signup" | "forgot";
 
 const Auth = () => {
