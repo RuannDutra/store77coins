@@ -59,19 +59,10 @@ export const OrderChat = ({ orderId, productName }: Props) => {
     const missing = ids.filter((id) => !senders[id]);
     if (missing.length === 0) return;
 
-    let { data, error } = await supabase
+    const { data } = await supabase
       .from("profiles")
-      .select("id, username, avatar_url")
+      .select("id, username")
       .in("id", missing);
-
-    // If it fails (e.g. avatar_url column doesn't exist), fallback to just username
-    if (error) {
-      const fallback = await supabase
-        .from("profiles")
-        .select("id, username")
-        .in("id", missing);
-      data = fallback.data;
-    }
 
     if (data) {
       setSenders((prev) => {
