@@ -205,12 +205,14 @@ export const AdminProducts = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir produto? Ele será desativado e removido da loja.")) return;
-    // Remove do painel imediatamente (otimista)
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    toast.success("Produto removido.");
-    // Desativa no banco em segundo plano
-    await supabase.from("products").update({ active: false }).eq("id", id);
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir no banco: " + error.message);
+      load(); // Recarrega para restaurar o item se falhou
+    } else {
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Produto removido definitivamente.");
+    }
   };
 
   return (

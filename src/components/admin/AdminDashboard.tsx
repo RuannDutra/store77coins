@@ -89,7 +89,8 @@ export const AdminDashboard = () => {
     
     const { error } = await supabase.from("orders").delete().eq("id", id);
     if (error) {
-      toast.error("Erro ao excluir pedido");
+      console.error("Erro ao excluir:", error);
+      toast.error("Erro ao excluir pedido: " + error.message);
     } else {
       toast.success("Pedido excluído");
       setOrders(prev => prev.filter(o => o.id !== id));

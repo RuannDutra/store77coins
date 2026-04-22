@@ -36,6 +36,13 @@ CREATE POLICY "Products admin manage"
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
+-- Garantir delete para orders explicitamente
+DROP POLICY IF EXISTS "Admins can delete orders" ON public.orders;
+CREATE POLICY "Admins can delete orders"
+  ON public.orders FOR DELETE
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
+
 
 -- 3. Corrigir RLS da tabela product_secrets
 DROP POLICY IF EXISTS "Admins manage product secrets" ON public.product_secrets;

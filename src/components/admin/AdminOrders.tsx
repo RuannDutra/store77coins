@@ -147,12 +147,14 @@ export const AdminOrders = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja excluir este pedido?")) return;
 
-    // Remove do estado local imediatamente (otimista)
-    setOrders((prev) => prev.filter((o) => o.id !== id));
-    toast.success("Pedido excluído.");
-
-    // Tenta deletar no banco em segundo plano
-    await supabase.from("orders").delete().eq("id", id);
+    const { error } = await supabase.from("orders").delete().eq("id", id);
+    
+    if (error) {
+      toast.error("Erro ao excluir no banco: " + error.message);
+    } else {
+      setOrders((prev) => prev.filter((o) => o.id !== id));
+      toast.success("Pedido excluído definitivamente.");
+    }
   };
 
   const filters: UIStatus[] = ["pending", "approved", "delivered", "rejected", "all"];
