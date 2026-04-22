@@ -203,24 +203,19 @@ export const OrderChat = ({ orderId, productName }: Props) => {
               avatarUrl = deterministicUrl;
             }
 
-                    {!n.read && <div className="h-2 w-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
-                  </div>
-                );
-              }
-
-              // Mensagem de Sistema (Entrega)
-              if (m.content.startsWith("Sistema - Pedido Marcado como Entregue")) {
-                return (
-                  <div key={m.id} className="flex justify-center my-4">
-                    <div className="bg-success/10 border border-success/20 text-success text-[11px] px-4 py-1.5 rounded-full font-medium">
-                      {m.content}
-                    </div>
-                  </div>
-                );
-              }
-
+            // Mensagem de Sistema (Entrega)
+            if (m.content.startsWith("Sistema - Pedido Marcado como Entregue")) {
               return (
-                <div key={m.id} className={cn("flex items-start gap-2", mine ? "flex-row-reverse" : "flex-row")}>
+                <div key={m.id} className="flex justify-center my-4">
+                  <div className="bg-success/10 border border-success/20 text-success text-[11px] px-4 py-1.5 rounded-full font-medium">
+                    {m.content}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={m.id} className={cn("flex items-start gap-2", mine ? "flex-row-reverse" : "flex-row")}>
                 {/* Avatar — always top-aligned */}
                 <AvatarBubble username={displayName} avatarUrl={avatarUrl} size={28} />
 

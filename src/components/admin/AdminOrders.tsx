@@ -134,6 +134,7 @@ export const AdminOrders = () => {
       .update({ status: dbStatus, admin_notes: dbNotes })
       .eq("id", acting.id);
 
+    setSaving(false);
     if (error) return toast.error(error.message);
 
     // Se for entregue, insere mensagem de sistema no chat
