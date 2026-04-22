@@ -7,7 +7,6 @@ import { User, Search, ShieldCheck } from "lucide-react";
 interface ProfileRow {
   id: string;
   username: string;
-  email: string | null;
   created_at: string;
 }
 
@@ -30,7 +29,7 @@ export const AdminUsers = () => {
   useEffect(() => {
     const load = async () => {
       const [{ data: p }, { data: o }, { data: r }] = await Promise.all([
-        supabase.from("profiles").select("id, username, email, created_at").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id, username, created_at").order("created_at", { ascending: false }),
         supabase.from("orders").select("id, user_id, product_name, amount, status, created_at").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role").eq("role", "admin"),
       ]);
@@ -43,8 +42,7 @@ export const AdminUsers = () => {
   }, []);
 
   const filtered = profiles.filter((p) =>
-    p.username.toLowerCase().includes(search.toLowerCase()) ||
-    (p.email || "").toLowerCase().includes(search.toLowerCase())
+    p.username.toLowerCase().includes(search.toLowerCase())
   );
 
   const ordersByUser = (uid: string) => orders.filter((o) => o.user_id === uid);
@@ -58,7 +56,7 @@ export const AdminUsers = () => {
         <div className="relative">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por usuário ou email..."
+            placeholder="Buscar por usuário..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -94,7 +92,7 @@ export const AdminUsers = () => {
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {u.email || "—"} · cadastrado em {new Date(u.created_at).toLocaleDateString("pt-BR")}
+                        cadastrado em {new Date(u.created_at).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                   </div>

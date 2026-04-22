@@ -16,8 +16,7 @@ interface Product {
   price: number;
   image_url: string | null;
   delivery_type: "automatic" | "manual";
-  checkout_url: string | null;
-  variants?: { name: string; price: number; checkout_url: string }[] | null;
+  variants?: { name: string; price: number }[] | null;
   categories: { name: string } | null;
 }
 
@@ -34,7 +33,7 @@ const ProductDetail = () => {
     if (!id) return;
     supabase
       .from("products")
-      .select("id, name, description, price, image_url, delivery_type, checkout_url, categories(name)")
+      .select("id, name, description, price, image_url, delivery_type, variants, categories(name)")
       .eq("id", id)
       .maybeSingle()
       .then(({ data }) => {
@@ -52,14 +51,8 @@ const ProductDetail = () => {
     if (!product) return;
 
     const variant = product.variants && selectedVariant !== null ? product.variants[selectedVariant] : null;
-    const checkout_url = variant ? variant.checkout_url : product.checkout_url;
     const amount = variant ? variant.price : product.price;
     const product_name = variant ? `${product.name} - ${variant.name}` : product.name;
-
-    if (!checkout_url) {
-      toast.error("Checkout indisponível para este produto");
-      return;
-    }
 
     setBuying(true);
     const { data, error } = await supabase
@@ -69,10 +62,9 @@ const ProductDetail = () => {
         product_id: product.id,
         product_name,
         amount,
-        checkout_url,
         status: "pending",
       })
-      .select("id")
+      .select("id, checkout_url")
       .single();
 
     setBuying(false);
@@ -84,7 +76,9 @@ const ProductDetail = () => {
 
     toast.success("Pedido criado! Redirecionando para o checkout...");
     setTimeout(() => {
-      window.open(checkout_url, "_blank");
+      if (data.checkout_url) {
+        window.open(data.checkout_url, "_blank");
+      }
       navigate("/orders");
     }, 800);
   };

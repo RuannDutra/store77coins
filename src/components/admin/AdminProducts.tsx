@@ -20,8 +20,11 @@ interface Product {
   category_id: string | null;
   delivery_type: "automatic" | "manual";
   active: boolean;
-  checkout_url: string | null;
-  variants?: { name: string; price: number; checkout_url: string }[] | null;
+  product_secrets?: {
+    checkout_url: string | null;
+    variants_urls: { name: string; checkout_url: string }[] | null;
+  } | null;
+  variants?: { name: string; price: number }[] | null;
   categories?: { name: string } | null;
 }
 
@@ -49,7 +52,7 @@ export const AdminProducts = () => {
 
   const load = async () => {
     const [{ data: prods }, { data: cats }] = await Promise.all([
-      supabase.from("products").select("*, categories(name)").order("created_at", { ascending: false }),
+      supabase.from("products").select("*, product_secrets(checkout_url, variants_urls), categories(name)").order("created_at", { ascending: false }),
       supabase.from("categories").select("id, name").order("name"),
     ]);
     setProducts((prods as any) || []);
@@ -66,6 +69,7 @@ export const AdminProducts = () => {
 
   const openEdit = (p: Product) => {
     setEditing(p);
+    const secrets = p.product_secrets || { checkout_url: "", variants_urls: [] };
     setForm({
       name: p.name,
       description: p.description || "",
@@ -74,9 +78,13 @@ export const AdminProducts = () => {
       category_id: p.category_id || "",
       delivery_type: p.delivery_type,
       active: p.active,
-      checkout_url: p.checkout_url || "",
-      type: p.variants && p.variants.length > 0 ? "dynamic" : "normal",
-      variants: p.variants ? p.variants.map((v: any) => ({ ...v, price: String(v.price) })) : [],
+      checkout_url: secrets.checkout_url || "",
+      type: secrets.variants_urls && secrets.variants_urls.length > 0 ? "dynamic" : "normal",
+      variants: p.variants ? p.variants.map((v: any, idx: number) => ({
+        ...v,
+        price: String(v.price),
+        checkout_url: secrets.variants_urls?.[idx]?.checkout_url || ""
+      })) : [],
     });
     setOpen(true);
   };
@@ -133,19 +141,32 @@ export const AdminProducts = () => {
       category_id: form.category_id || null,
       delivery_type: form.delivery_type,
       active: form.active,
-      checkout_url: form.type === "normal" ? form.checkout_url.trim() || null : null,
+      checkout_url: null, // Segredo salvo na tabela product_secrets
+      variants: form.type === "dynamic" 
+        ? form.variants.map(v => ({ name: v.name.trim(), price: parseFloat(v.price) })) 
+        : null,
     };
 
-    if (form.type === "dynamic") {
-      payload.variants = form.variants.map(v => ({ name: v.name.trim(), price: parseFloat(v.price), checkout_url: v.checkout_url.trim() }));
+    const { data: savedProd, error: prodError } = editing
+      ? await supabase.from("products").update(payload).eq("id", editing.id).select().single()
+      : await supabase.from("products").insert(payload).select().single();
+
+    if (prodError) {
+      setSaving(false);
+      return toast.error(prodError.message);
     }
 
-    const { error } = editing
-      ? await supabase.from("products").update(payload).eq("id", editing.id)
-      : await supabase.from("products").insert(payload);
+    // Save secrets
+    if (savedProd) {
+      const secretsPayload = {
+        product_id: savedProd.id,
+        checkout_url: form.type === "normal" ? form.checkout_url.trim() || null : null,
+        variants_urls: form.type === "dynamic" ? form.variants.map(v => ({ name: v.name.trim(), checkout_url: v.checkout_url.trim() })) : null,
+      };
+      await supabase.from("product_secrets").upsert(secretsPayload);
+    }
 
     setSaving(false);
-    if (error) return toast.error(error.message);
     toast.success(editing ? "Produto atualizado" : "Produto criado");
     setOpen(false);
     load();
