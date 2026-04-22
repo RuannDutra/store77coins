@@ -57,34 +57,25 @@ export const OrderChat = ({ orderId, productName }: Props) => {
   const [loading, setLoading] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Fetch profile info for a list of user IDs (only the ones not already cached)
+  // Fetch profile info via SECURITY DEFINER RPC (RLS na tabela profiles bloqueia destinatário)
   const fetchSenders = async (ids: string[]) => {
     const missing = ids.filter((id) => !senders[id]);
     if (missing.length === 0) return;
 
-    let { data, error } = await supabase
-      .from("profiles")
-      .select("id, username, avatar_url")
-      .in("id", missing);
+    const results = await Promise.all(
+      missing.map(async (id) => {
+        const { data } = await supabase.rpc("get_username_by_id", { _user_id: id });
+        return { id, username: (data as string | null) ?? "Usuário" };
+      })
+    );
 
-    // If it fails (e.g. avatar_url column doesn't exist), fallback to just username
-    if (error) {
-      const fallback = await supabase
-        .from("profiles")
-        .select("id, username")
-        .in("id", missing);
-      data = fallback.data;
-    }
-
-    if (data) {
-      setSenders((prev) => {
-        const next = { ...prev };
-        (data as any[]).forEach((p) => {
-          next[p.id] = { username: p.username, avatar_url: p.avatar_url ?? null };
-        });
-        return next;
+    setSenders((prev) => {
+      const next = { ...prev };
+      results.forEach((r) => {
+        next[r.id] = { username: r.username, avatar_url: null };
       });
-    }
+      return next;
+    });
   };
 
   useEffect(() => {

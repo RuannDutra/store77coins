@@ -120,6 +120,36 @@ export type Database = {
           },
         ]
       }
+      password_reset_codes: {
+        Row: {
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          used?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           active: boolean
@@ -132,7 +162,6 @@ export type Database = {
           image_url: string | null
           name: string
           price: number
-          variants: Json | null
           updated_at: string
         }
         Insert: {
@@ -146,7 +175,6 @@ export type Database = {
           image_url?: string | null
           name: string
           price: number
-          variants?: Json | null
           updated_at?: string
         }
         Update: {
@@ -160,7 +188,6 @@ export type Database = {
           image_url?: string | null
           name?: string
           price?: number
-          variants?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -179,21 +206,18 @@ export type Database = {
           email: string | null
           id: string
           username: string
-          avatar_url: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           id: string
           username: string
-          avatar_url?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           id?: string
           username?: string
-          avatar_url?: string | null
         }
         Relationships: []
       }
@@ -258,6 +282,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_reset_code: {
+        Args: { _code: string; _email: string }
+        Returns: string
+      }
+      create_password_reset_code: {
+        Args: { _email: string }
+        Returns: {
+          code: string
+          user_id: string
+        }[]
+      }
+      get_email_by_username: { Args: { _username: string }; Returns: string }
+      get_username_by_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -265,11 +302,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_exists_by_email: { Args: { _email: string }; Returns: boolean }
+      verify_reset_code: {
+        Args: { _code: string; _email: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "user"
       delivery_type: "automatic" | "manual"
-      order_status: "pending" | "approved" | "rejected" | "delivered"
+      order_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -399,7 +441,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       delivery_type: ["automatic", "manual"],
-      order_status: ["pending", "approved", "rejected", "delivered"],
+      order_status: ["pending", "approved", "rejected"],
     },
   },
 } as const
