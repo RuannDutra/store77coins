@@ -9,11 +9,11 @@ import { AdminCategories } from "@/components/admin/AdminCategories";
 import { AdminOrders } from "@/components/admin/AdminOrders";
 import { AdminUsers } from "@/components/admin/AdminUsers";
 import { AdminReviews } from "@/components/admin/AdminReviews";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
 const Admin = () => {
   const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState("orders");
 
   useEffect(() => {
     document.title = "Admin — 77 Coins";
@@ -56,14 +56,20 @@ const Admin = () => {
       <Navbar />
       <div className="container py-8">
         <h1 className="font-display text-3xl font-bold mb-6">Painel Admin</h1>
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="orders">Pedidos</TabsTrigger>
-            <TabsTrigger value="products">Produtos</TabsTrigger>
-            <TabsTrigger value="categories">Categorias</TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
-            <TabsTrigger value="reviews">Avaliações</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <TabsList className="bg-muted/50 p-1 flex-wrap h-auto">
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="orders">Pedidos</TabsTrigger>
+              <TabsTrigger value="products">Produtos</TabsTrigger>
+              <TabsTrigger value="categories">Categorias</TabsTrigger>
+              <TabsTrigger value="users">Usuários</TabsTrigger>
+              <TabsTrigger value="reviews">Avaliações</TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="dashboard" className="outline-none">
+            <AdminDashboard />
+          </TabsContent>
           <TabsContent value="orders" className="mt-6">
             <AdminOrders />
           </TabsContent>
