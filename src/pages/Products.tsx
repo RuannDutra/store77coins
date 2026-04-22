@@ -35,6 +35,7 @@ const Products = () => {
 
   useEffect(() => {
     document.title = "Produtos — 77 Coins";
+    const load = async () => {
       const [prodsRes, catsRes, revsRes] = await Promise.all([
         supabase
           .from("products")
@@ -58,7 +59,9 @@ const Products = () => {
         map[r.product_id].avg += r.rating;
       });
       Object.keys(map).forEach((id) => {
-        map[id].avg = map[id].avg / map[id].count;
+        if (map[id].count > 0) {
+          map[id].avg = map[id].avg / map[id].count;
+        }
       });
       setRatings(map);
 
