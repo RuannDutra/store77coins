@@ -190,17 +190,11 @@ export const OrderChat = ({ orderId, productName }: Props) => {
             const sender = senders[m.sender_id];
             const displayName = sender?.username ?? (mine ? (myUsername ?? "Você") : "...");
             
-            // Tenta pegar a URL do banco (sender.avatar_url)
-            // Se não tiver, gera a URL determinística usando o ID do usuário (pois a nova lógica salva sem extensão)
-            const deterministicUrl = `${supabase.storage.from("product-images").getPublicUrl(`avatars/${m.sender_id}/avatar`).data.publicUrl}`;
-            
             let avatarUrl = sender?.avatar_url ?? (mine ? myAvatar : null);
             
-            // Se a URL não existir no sender, tentamos usar o fallback determinístico (pode quebrar se o usuário nunca fez upload, mas o AvatarBubble cuida disso se a img falhar)
-            if (!avatarUrl && sender) {
-              // Se tivermos certeza que a coluna existe, isso seria null de verdade. 
-              // Mas se a coluna não existir, usamos o fallback.
-              avatarUrl = deterministicUrl;
+            if (!avatarUrl && m.sender_id) {
+              const { data } = supabase.storage.from("avatars").getPublicUrl(`${m.sender_id}/avatar`);
+              avatarUrl = data?.publicUrl || null;
             }
 
             // Mensagem de Sistema (Entrega)

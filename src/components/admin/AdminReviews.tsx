@@ -42,15 +42,11 @@ export const AdminReviews = () => {
     }
   };
 
-  useEffect(() => { 
-    load(); 
-    
-    const ch = supabase.channel("admin-reviews-realtime")
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => {
-        load();
-      })
+  useEffect(() => {
+    load();
+    const ch = supabase.channel("admin-revs")
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => load())
       .subscribe();
-      
     return () => { supabase.removeChannel(ch); };
   }, [filter]);
 
