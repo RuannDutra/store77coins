@@ -36,36 +36,41 @@ const Products = () => {
   useEffect(() => {
     document.title = "Produtos — 77 Coins";
     const load = async () => {
-      const [prodsRes, catsRes, revsRes] = await Promise.all([
-        supabase
-          .from("products")
-          .select("id, name, price, image_url, delivery_type, category_id, active, categories(id, name)")
-          .eq("active", true)
-          .order("created_at", { ascending: false }),
-        supabase.from("categories").select("id, name, slug").order("name"),
-        supabase.from("reviews").select("product_id, rating").eq("approved", true),
-      ]);
+      try {
+        const [prodsRes, catsRes, revsRes] = await Promise.all([
+          supabase
+            .from("products")
+            .select("id, name, price, image_url, delivery_type, category_id, active, categories(id, name)")
+            .eq("active", true)
+            .order("created_at", { ascending: false }),
+          supabase.from("categories").select("id, name, slug").order("name"),
+          supabase.from("reviews").select("product_id, rating").eq("approved", true),
+        ]);
 
-      setProducts((prodsRes.data as any) || []);
-      setCategories(catsRes.data || []);
+        setProducts((prodsRes.data as any) || []);
+        setCategories(catsRes.data || []);
 
-      const revs = revsRes.data;
+        const revs = revsRes.data;
 
-      // Calcula média por produto
-      const map: RatingMap = {};
-      (revs || []).forEach((r: any) => {
-        if (!map[r.product_id]) map[r.product_id] = { avg: 0, count: 0 };
-        map[r.product_id].count += 1;
-        map[r.product_id].avg += r.rating;
-      });
-      Object.keys(map).forEach((id) => {
-        if (map[id].count > 0) {
-          map[id].avg = map[id].avg / map[id].count;
-        }
-      });
-      setRatings(map);
+        // Calcula média por produto
+        const map: RatingMap = {};
+        (revs || []).forEach((r: any) => {
+          if (!map[r.product_id]) map[r.product_id] = { avg: 0, count: 0 };
+          map[r.product_id].count += 1;
+          map[r.product_id].avg += r.rating;
+        });
+        Object.keys(map).forEach((id) => {
+          if (map[id].count > 0) {
+            map[id].avg = map[id].avg / map[id].count;
+          }
+        });
+        setRatings(map);
 
-      setLoading(false);
+        setLoading(false);
+      } catch (err) {
+        console.error("Erro ao carregar produtos:", err);
+        setLoading(false);
+      }
     };
     load();
   }, []);
