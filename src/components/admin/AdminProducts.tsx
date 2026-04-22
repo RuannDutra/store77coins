@@ -154,6 +154,7 @@ export const AdminProducts = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Nome obrigatório");
+    if (!form.category_id) return toast.error("Selecione uma categoria");
     
     let price = 0;
     if (form.type === "normal") {

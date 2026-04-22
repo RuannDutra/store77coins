@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Coins, Loader2, Check, X, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const fakeEmail = (u: string) => `${u.toLowerCase()}@77coins.local`;
+const fakeEmail = (u: string) => `${u.toLowerCase()}@77coins.com`;
 
 const validateUsername = (u: string): string | null => {
   if (!u) return "Informe um usuário";
