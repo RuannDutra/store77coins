@@ -64,15 +64,16 @@ export const OrderChat = ({ orderId, productName }: Props) => {
 
     const results = await Promise.all(
       missing.map(async (id) => {
-        const { data } = await supabase.rpc("get_username_by_id", { _user_id: id });
-        return { id, username: (data as string | null) ?? "Usuário" };
+        const { data } = await supabase.rpc("get_user_info_by_id", { _user_id: id });
+        const info = (data as any) || { username: "Usuário", avatar_url: null };
+        return { id, username: info.username, avatar_url: info.avatar_url };
       })
     );
 
     setSenders((prev) => {
       const next = { ...prev };
       results.forEach((r) => {
-        next[r.id] = { username: r.username, avatar_url: null };
+        next[r.id] = { username: r.username, avatar_url: r.avatar_url };
       });
       return next;
     });
@@ -193,7 +194,7 @@ export const OrderChat = ({ orderId, productName }: Props) => {
             let avatarUrl = sender?.avatar_url ?? (mine ? myAvatar : null);
             
             if (!avatarUrl && m.sender_id) {
-              const { data } = supabase.storage.from("avatars").getPublicUrl(`${m.sender_id}/avatar`);
+              const { data } = supabase.storage.from("product-images").getPublicUrl(`avatars/${m.sender_id}/avatar`);
               avatarUrl = data?.publicUrl || null;
             }
 
