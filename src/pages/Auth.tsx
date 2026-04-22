@@ -64,9 +64,9 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        // Check if username is taken
-        const { data: existingUser } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
-        if (existingUser) {
+        // Check if username is taken (via SECURITY DEFINER RPC — bypasses RLS safely)
+        const { data: existingEmail } = await supabase.rpc("get_email_by_username", { _username: username });
+        if (existingEmail) {
           toast.error("Já existe um usuário com aquele nome");
           return;
         }
@@ -92,11 +92,10 @@ const Auth = () => {
       } else {
         let loginEmail = username;
         if (!username.includes("@")) {
-          const { data } = await supabase.from("profiles").select("email").eq("username", username).maybeSingle();
-          if (data?.email) {
-            loginEmail = data.email;
+          const { data: foundEmail } = await supabase.rpc("get_email_by_username", { _username: username });
+          if (foundEmail) {
+            loginEmail = foundEmail as string;
           } else {
-            // Se tentou entrar com username e ele não está na tabela
             toast.error("Usuário Inválido");
             return;
           }
