@@ -20,12 +20,7 @@ interface Product {
   category_id: string | null;
   delivery_type: "automatic" | "manual";
   active: boolean;
-  stock: number;
-  product_secrets?: {
-    checkout_url: string | null;
-    variants_urls: { name: string; checkout_url: string }[] | null;
-  } | null;
-  variants?: { name: string; price: number }[] | null;
+  checkout_url: string | null;
   categories?: { name: string } | null;
 }
 
@@ -37,10 +32,7 @@ const empty = {
   category_id: "",
   delivery_type: "manual" as "automatic" | "manual",
   active: true,
-  stock: 0,
   checkout_url: "",
-  type: "normal" as "normal" | "dynamic",
-  variants: [] as { name: string; price: string; checkout_url: string }[],
 };
 
 export const AdminProducts = () => {
@@ -54,33 +46,19 @@ export const AdminProducts = () => {
 
   const load = async () => {
     try {
-      setProducts([]); // Limpa para mostrar loading visual se necessário
-      
       const [prodsRes, catsRes] = await Promise.all([
         supabase.from("products").select("*").order("created_at", { ascending: false }),
         supabase.from("categories").select("id, name").order("name"),
       ]);
 
       if (prodsRes.error) throw prodsRes.error;
-      
+
       const prods = prodsRes.data || [];
       const cats = catsRes.data || [];
 
-      // Busca segredos separadamente para evitar erro de relacionamento no cache do Supabase
-      const { data: secrets, error: secretsError } = await supabase
-        .from("product_secrets")
-        .select("*")
-        .in("product_id", prods.map(p => p.id));
-
-      if (secretsError) {
-        console.warn("Erro ao buscar segredos:", secretsError);
-      }
-
-      // Une os produtos com seus segredos e categorias
-      const merged = prods.map(p => ({
+      const merged = prods.map((p) => ({
         ...p,
-        product_secrets: secrets?.find(s => s.product_id === p.id) || null,
-        categories: cats.find(c => c.id === p.category_id) || null
+        categories: cats.find((c) => c.id === p.category_id) || null,
       }));
 
       setProducts(merged as any);
@@ -101,9 +79,6 @@ export const AdminProducts = () => {
 
   const openEdit = (p: Product) => {
     setEditing(p);
-    // PostgREST returns child tables as arrays in 1:1 if not explicitly cast, handle both cases
-    const secretsData = Array.isArray(p.product_secrets) ? p.product_secrets[0] : p.product_secrets;
-    const secrets = secretsData || { checkout_url: "", variants_urls: [] };
     setForm({
       name: p.name,
       description: p.description || "",
@@ -112,30 +87,9 @@ export const AdminProducts = () => {
       category_id: p.category_id || "",
       delivery_type: p.delivery_type,
       active: p.active,
-      stock: p.stock || 0,
-      checkout_url: secrets.checkout_url || "",
-      type: secrets.variants_urls && secrets.variants_urls.length > 0 ? "dynamic" : "normal",
-      variants: p.variants ? p.variants.map((v: any, idx: number) => ({
-        ...v,
-        price: String(v.price),
-        checkout_url: secrets.variants_urls?.[idx]?.checkout_url || ""
-      })) : [],
+      checkout_url: p.checkout_url || "",
     });
     setOpen(true);
-  };
-
-  const addVariant = () => {
-    setForm(f => ({ ...f, variants: [...f.variants, { name: "", price: "", checkout_url: "" }] }));
-  };
-
-  const updateVariant = (index: number, field: string, value: string) => {
-    const newVariants = [...form.variants];
-    newVariants[index] = { ...newVariants[index], [field]: value };
-    setForm(f => ({ ...f, variants: newVariants }));
-  };
-
-  const removeVariant = (index: number) => {
-    setForm(f => ({ ...f, variants: f.variants.filter((_, i) => i !== index) }));
   };
 
   const handleUpload = async (file: File) => {
@@ -158,18 +112,12 @@ export const AdminProducts = () => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("Nome obrigatório");
     if (!form.category_id) return toast.error("Selecione uma categoria");
-    
-    let price = 0;
-    if (form.type === "normal") {
-      price = parseFloat(form.price);
-      if (isNaN(price) || price < 0) return toast.error("Preço inválido");
-    } else {
-      if (form.variants.length === 0) return toast.error("Adicione pelo menos uma opção");
-      price = Math.min(...form.variants.map(v => parseFloat(v.price) || 0));
-    }
+
+    const price = parseFloat(form.price);
+    if (isNaN(price) || price < 0) return toast.error("Preço inválido");
 
     setSaving(true);
-    const payload: any = {
+    const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
       price,
@@ -177,30 +125,16 @@ export const AdminProducts = () => {
       category_id: form.category_id || null,
       delivery_type: form.delivery_type,
       active: form.active,
-      stock: parseInt(String(form.stock)) || 0,
-      checkout_url: null, // Segredo salvo na tabela product_secrets
-      variants: form.type === "dynamic" 
-        ? form.variants.map(v => ({ name: v.name.trim(), price: parseFloat(v.price) })) 
-        : null,
+      checkout_url: form.checkout_url.trim() || null,
     };
 
-    const { data: savedProd, error: prodError } = editing
-      ? await supabase.from("products").update(payload).eq("id", editing.id).select().single()
-      : await supabase.from("products").insert(payload).select().single();
+    const { error: prodError } = editing
+      ? await supabase.from("products").update(payload).eq("id", editing.id)
+      : await supabase.from("products").insert(payload);
 
     if (prodError) {
       setSaving(false);
       return toast.error(prodError.message);
-    }
-
-    // Save secrets
-    if (savedProd) {
-      const secretsPayload = {
-        product_id: savedProd.id,
-        checkout_url: form.type === "normal" ? form.checkout_url.trim() || null : null,
-        variants_urls: form.type === "dynamic" ? form.variants.map(v => ({ name: v.name.trim(), checkout_url: v.checkout_url.trim() })) : null,
-      };
-      await supabase.from("product_secrets").upsert(secretsPayload);
     }
 
     setSaving(false);
@@ -212,11 +146,11 @@ export const AdminProducts = () => {
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) {
-      toast.error("Erro ao excluir no banco: " + error.message);
-      load(); // Recarrega para restaurar o item se falhou
+      toast.error("Erro ao excluir: " + error.message);
+      load();
     } else {
       setProducts((prev) => prev.filter((p) => p.id !== id));
-      toast.success("Produto removido definitivamente.");
+      toast.success("Produto removido.");
     }
   };
 
@@ -241,60 +175,21 @@ export const AdminProducts = () => {
                 <Label>Descrição</Label>
                 <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} />
               </div>
-              <div className="space-y-2">
-                <Label>Tipo de Anúncio</Label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="type" checked={form.type === "normal"} onChange={() => setForm({ ...form, type: "normal" })} />
-                    Normal (Único preço e link)
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="type" checked={form.type === "dynamic"} onChange={() => setForm({ ...form, type: "dynamic" })} />
-                    Dinâmico (Múltiplas opções)
-                  </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Preço (R$)</Label>
+                  <Input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>URL do checkout</Label>
+                  <Input
+                    type="url"
+                    placeholder="https://..."
+                    value={form.checkout_url}
+                    onChange={(e) => setForm({ ...form, checkout_url: e.target.value })}
+                  />
                 </div>
               </div>
-              {form.type === "normal" ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Preço (R$)</Label>
-                    <Input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>URL do checkout (GOAT Pay)</Label>
-                    <Input
-                      type="url"
-                      placeholder="https://checkout.goatpay.com/..."
-                      value={form.checkout_url}
-                      onChange={(e) => setForm({ ...form, checkout_url: e.target.value })}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 border p-4 rounded-lg bg-muted/50">
-                  <div className="flex justify-between items-center">
-                    <Label>Opções do Produto</Label>
-                    <Button type="button" size="sm" variant="outline" onClick={addVariant}>
-                      <Plus className="h-4 w-4 mr-1" /> Add Opção
-                    </Button>
-                  </div>
-                  {form.variants.map((v, idx) => (
-                    <div key={idx} className="flex gap-2 items-start bg-card p-3 rounded border">
-                      <div className="flex-1 space-y-2">
-                        <Input placeholder="Nome da opção (ex: 1000 Coins)" value={v.name} onChange={(e) => updateVariant(idx, "name", e.target.value)} required />
-                        <div className="flex gap-2">
-                          <Input className="w-24" type="number" step="0.01" placeholder="Preço" value={v.price} onChange={(e) => updateVariant(idx, "price", e.target.value)} required />
-                          <Input className="flex-1" type="url" placeholder="Link de checkout" value={v.checkout_url} onChange={(e) => updateVariant(idx, "checkout_url", e.target.value)} required />
-                        </div>
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" className="text-destructive mt-1" onClick={() => removeVariant(idx)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  {form.variants.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Nenhuma opção adicionada</p>}
-                </div>
-              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Categoria</Label>
@@ -336,22 +231,12 @@ export const AdminProducts = () => {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Produto Ativo</Label>
-                <p className="text-[10px] text-muted-foreground">Visível para clientes</p>
+                <div className="space-y-0.5">
+                  <Label>Produto Ativo</Label>
+                  <p className="text-[10px] text-muted-foreground">Visível para clientes</p>
+                </div>
+                <Switch checked={form.active} onCheckedChange={(v) => setForm((f) => ({ ...f, active: v }))} />
               </div>
-              <Switch checked={form.active} onCheckedChange={(v) => setForm(f => ({ ...f, active: v }))} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Estoque Disponível</Label>
-              <Input 
-                type="number" 
-                value={form.stock} 
-                onChange={(e) => setForm(f => ({ ...f, stock: parseInt(e.target.value) || 0 }))} 
-                placeholder="Ex: 50"
-              />
-            </div>
               <Button type="submit" className="w-full" disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 Salvar
