@@ -64,9 +64,8 @@ export const OrderChat = ({ orderId, productName }: Props) => {
 
     const results = await Promise.all(
       missing.map(async (id) => {
-        const { data } = await supabase.rpc("get_user_info_by_id", { _user_id: id });
-        const info = (data as any) || { username: "Usuário", avatar_url: null };
-        return { id, username: info.username, avatar_url: info.avatar_url };
+        const { data } = await supabase.rpc("get_username_by_id", { _user_id: id });
+        return { id, username: (data as string) || "Usuário", avatar_url: null as string | null };
       })
     );
 

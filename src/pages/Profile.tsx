@@ -74,8 +74,7 @@ const Profile = () => {
       data: { avatar_url: avatarUrl },
     });
     
-    // Tenta salvar na tabela profiles também (se a coluna não existir, vai falhar silenciosamente mas o app continua)
-    await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("id", user.id).catch(() => {});
+    // Avatar salvo apenas em auth.user_metadata (coluna avatar_url não existe na tabela profiles)
 
     if (updateError) {
       toast.error("Erro ao salvar: " + updateError.message);
