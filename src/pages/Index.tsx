@@ -17,8 +17,8 @@ const Index = () => {
 
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-glow pointer-events-none" />
-        <div className="container relative py-20 md:py-32">
-          <div className="mx-auto max-w-3xl text-center animate-fade-in">
+        <div className="w-full max-w-[1920px] mx-auto relative py-24 md:py-40 px-6">
+          <div className="mx-auto max-w-4xl text-center animate-fade-in flex flex-col items-center justify-center">
 
             <h1 className="font-display text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
               Seus coins,<br />
