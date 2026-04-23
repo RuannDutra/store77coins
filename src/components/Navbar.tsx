@@ -15,7 +15,7 @@ export const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-      <div className="w-full max-w-[1920px] mx-auto flex h-16 items-center justify-between px-6 md:px-12">
+      <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-gradient-primary shadow-yellow group-hover:scale-110 transition-transform">
             <img src="https://cdn.ereemby.com/attachments/17702271194242288imagem.png" alt="Logo" className="h-full w-full object-contain" />
